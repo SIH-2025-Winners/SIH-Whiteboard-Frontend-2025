@@ -15,34 +15,36 @@ const LandingPage = () => {
     const queryRole = params.get("role");
     const queryRoomID = params.get("roomID");
     const userID = params.get("userID");
+    const classID = params.get("classID");
 
     if (queryRole && queryRoomID) {
       navigate("/whiteboard", {
-        state: { role: queryRole, roomID: queryRoomID, userID: userID },
+        state: { role: queryRole, roomID: queryRoomID, userID: userID, classID: classID },
       });
     }
   }, [location, navigate]);
 
   const validateForm = () => {
     const newErrors = {};
-    
+
     if (!role) newErrors.role = "Please select your role";
     if (!roomID.trim()) newErrors.roomID = "Room ID is required";
     if (!userID.trim()) newErrors.userID = "User ID is required";
     if (userID.trim().length < 2) newErrors.userID = "User ID must be at least 2 characters";
     if (roomID.trim().length < 3) newErrors.roomID = "Room ID must be at least 3 characters";
     
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleRedirect = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
-    
+
     setIsJoining(true);
-    
+
     // Simulate a brief loading state for better UX
     setTimeout(() => {
       const data = { roomID: roomID.trim(), role, userID: userID.trim() };
@@ -196,9 +198,9 @@ const LandingPage = () => {
         {/* Header Section */}
         <div style={styles.header}>
           <div style={styles.logo}>
-            <img 
-              src="/GyaanSetuIcon.jpeg" 
-              alt="GyaanSetu" 
+            <img
+              src="/GyaanSetuIcon.jpeg"
+              alt="GyaanSetu"
               style={{
                 width: '48px',
                 height: '48px',
