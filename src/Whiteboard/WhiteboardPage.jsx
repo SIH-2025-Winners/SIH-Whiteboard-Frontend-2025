@@ -383,11 +383,12 @@ function WhiteboardPage() {
         const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
 
         // POST chunk to upload server
-        await fetch(`${UPLOAD_SERVER_URL}/upload-chunk`, {
+        const responseofAudio = await fetch(`${UPLOAD_SERVER_URL}/upload-chunk`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ roomId: data.roomID, chunk: base64, classId: data.classID })
         });
+        console.log("Chunk uploaded, server response:", await responseofAudio.text());
       } catch (err) {
         console.error("Failed to upload chunk:", err);
       }
