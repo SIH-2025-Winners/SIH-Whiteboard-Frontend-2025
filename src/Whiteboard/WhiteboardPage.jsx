@@ -386,7 +386,7 @@ function WhiteboardPage() {
         await fetch(`${UPLOAD_SERVER_URL}/upload-chunk`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ roomId: data.roomID, chunk: base64 })
+          body: JSON.stringify({ roomId: data.roomID, chunk: base64, classId: data.classID })
         });
       } catch (err) {
         console.error("Failed to upload chunk:", err);
@@ -429,6 +429,9 @@ function WhiteboardPage() {
 
   // ----------------------------------------------------------------------
 
+
+  
+  // data.classID --> sent to audio server
   return (
     <div
       style={{
