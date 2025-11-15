@@ -6,10 +6,10 @@ import { useLocation } from "react-router-dom";
 import io from "socket.io-client";
 
 const AUDIO_SERVER_URL =
-  "http://localhost:3001";
+  "https://audio-room-full-fina-sih-backend.onrender.com";
 
 // If your chunk-upload backend runs on a different origin, change this.
-const UPLOAD_SERVER_URL = "http://localhost:3001";
+const UPLOAD_SERVER_URL = "https://audio-room-full-fina-sih-backend.onrender.com";
 
 // Socket.IO configuration with retry logic
 const socketConfig = {
