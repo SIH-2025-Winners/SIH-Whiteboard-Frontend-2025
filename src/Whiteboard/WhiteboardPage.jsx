@@ -70,11 +70,11 @@ function WhiteboardPage() {
     const joinRoom = async () => {
       try {
         console.log('🎤 Requesting microphone access...');
-        
+
         const stream = await navigator.mediaDevices.getUserMedia({
-          audio: { 
-            channelCount: 1, 
-            sampleRate: 16000, 
+          audio: {
+            channelCount: 1,
+            sampleRate: 16000,
             sampleSize: 16,
             echoCancellation: true,
             noiseSuppression: true,
@@ -82,20 +82,20 @@ function WhiteboardPage() {
           },
           video: false,
         });
-        
+
         localStreamRef.current = stream;
         console.log('✅ Microphone access granted:', stream.getAudioTracks());
-        
+
       } catch (error) {
         console.error('❌ Microphone access denied:', error);
         return;
       }
 
       console.log('🔌 Attempting connection to audio server:', AUDIO_SERVER_URL);
-      
+
       const socket = io(AUDIO_SERVER_URL, socketConfig);
       audioSocketRef.current = socket;
-      
+
       // Track connection attempts
       let connectionAttempts = 0;
       const maxAttempts = 5;
@@ -103,44 +103,44 @@ function WhiteboardPage() {
       socket.on("connect", () => {
         connectionAttempts = 0; // Reset counter on successful connection
         console.log('✅ Socket connected to audio server');
-        
+
         socket.emit("join-room", {
           roomId: data.roomID,
           username: data.userID,
           role: data.role,
         });
-        
+
         console.log('📡 Joining room:', { roomId: data.roomID, username: data.userID, role: data.role });
       });
-      
+
       socket.on("disconnect", (reason) => {
         console.log('❌ Socket disconnected:', reason);
       });
-      
+
       socket.on("connect_error", (error) => {
         connectionAttempts++;
         console.error(`❌ Socket connection error (attempt ${connectionAttempts}/${maxAttempts}):`, error);
-        
+
         if (connectionAttempts >= maxAttempts) {
           console.error('🚫 Max connection attempts reached. Audio features disabled.');
         }
       });
-      
+
       socket.on("reconnect", (attemptNumber) => {
         console.log(`🔄 Socket reconnected after ${attemptNumber} attempts`);
       });
-      
+
       socket.on("reconnect_error", (error) => {
         console.error('❌ Reconnection failed:', error);
       });
-      
+
       socket.on("reconnect_failed", () => {
         console.error('🚫 All reconnection attempts failed');
       });
 
       socket.on("all-users", (users) => {
         console.log('👥 All users received:', users);
-        
+
         users.forEach(({ userId, username: uname, role: urole }) => {
           setUsernames((prev) => ({ ...prev, [userId]: uname }));
           setRoles((prev) => ({ ...prev, [userId]: urole }));
@@ -235,7 +235,7 @@ function WhiteboardPage() {
         console.log(`🎵 Received remote stream from ${userId}:`, stream);
         console.log('  - Active:', stream.active);
         console.log('  - Audio tracks:', stream.getAudioTracks().length);
-        
+
         setRemoteStreams((prev) => ({ ...prev, [userId]: stream }));
       };
 
@@ -447,9 +447,9 @@ function WhiteboardPage() {
             ))}
           </div>
         </div>
-
+        {/* I m daddy */}
         {/* Collapsed "Dot" View */}
-        {/* <button
+        <button
           onClick={() => setIsPanelOpen(true)}
           style={{
             width: "60px",
@@ -480,7 +480,7 @@ function WhiteboardPage() {
             {Object.keys(remoteStreams).length + 1}
           </span>
           <span>Users</span>
-        </button> */}
+        </button>
       </div>
 
 
