@@ -6,7 +6,10 @@ import { useLocation } from "react-router-dom";
 import io from "socket.io-client";
 
 const AUDIO_SERVER_URL =
-  "https://audio-room-full-fina-sih-backend.onrender.com";
+  "http://localhost:3001";
+
+// If your chunk-upload backend runs on a different origin, change this.
+const UPLOAD_SERVER_URL = "http://localhost:3001";
 
 // Socket.IO configuration with retry logic
 const socketConfig = {
@@ -58,8 +61,16 @@ function WhiteboardPage() {
   const [usernames, setUsernames] = useState({});
   const [roles, setRoles] = useState({});
   const [isMuted, setIsMuted] = useState(false);
-  // Add this line with your other useState hooks
   const [isPanelOpen, setIsPanelOpen] = useState(false);
+
+  // --- Recording / mixing refs & state (from code 2)
+  const audioContextRef = useRef(null);
+  const destinationRef = useRef(null);
+  const mixedStreamRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const recordingRef = useRef(false);
+  const [downloadUrl, setDownloadUrl] = useState(null);
+  const [isRecording, setIsRecording] = useState(false);
 
   useEffect(() => {
     connectWithSocketServer(data.roomID, data.userID);
@@ -89,6 +100,11 @@ function WhiteboardPage() {
       } catch (error) {
         console.error('❌ Microphone access denied:', error);
         return;
+      }
+
+      // If teacher, prepare audio mixer (teacher uses mixedStream for recording)
+      if (data.role === "teacher") {
+        setupAudioMixer();
       }
 
       console.log('🔌 Attempting connection to audio server:', AUDIO_SERVER_URL);
@@ -200,6 +216,7 @@ function WhiteboardPage() {
         });
       });
 
+      // teacher/student mute handlers (existing)
       socket.on("mute", () => {
         localStreamRef.current.getAudioTracks().forEach((track) => {
           track.enabled = false;
@@ -212,6 +229,11 @@ function WhiteboardPage() {
           track.enabled = true;
         });
         setIsMuted(false);
+      });
+
+      // If server sends uploaded recording URL (optional)
+      socket.on("recording-uploaded", ({ url }) => {
+        setDownloadUrl(url);
       });
     };
 
@@ -237,6 +259,11 @@ function WhiteboardPage() {
         console.log('  - Audio tracks:', stream.getAudioTracks().length);
 
         setRemoteStreams((prev) => ({ ...prev, [userId]: stream }));
+
+        // ADD: if teacher, add remote streams to mixer (so they end up in mixedStream)
+        if (data.role === "teacher") {
+          addStreamToMixer(stream);
+        }
       };
 
       if (isOffer) {
@@ -258,6 +285,16 @@ function WhiteboardPage() {
       if (audioSocketRef.current) {
         audioSocketRef.current.disconnect();
       }
+      // clean-up audio context & recorder if any
+      try {
+        stopRecording();
+      } catch (e) { /* ignore */ }
+      if (audioContextRef.current) {
+        try {
+          audioContextRef.current.close();
+        } catch (e) {}
+        audioContextRef.current = null;
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.roomID, data.userID, data.role]);
@@ -276,6 +313,121 @@ function WhiteboardPage() {
   const handleUnmuteStudent = (userId) => {
     audioSocketRef.current.emit("unmute-student", { target: userId });
   };
+
+  // ---------- Audio mixer & recording functions (from code 2) ----------
+  const setupAudioMixer = () => {
+    if (data.role !== "teacher") return;
+    if (audioContextRef.current) return; // Avoid duplicates
+
+    audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+    destinationRef.current = audioContextRef.current.createMediaStreamDestination();
+    mixedStreamRef.current = destinationRef.current.stream;
+
+    // Add teacher’s mic
+    if (localStreamRef.current) {
+      try {
+        const micSource = audioContextRef.current.createMediaStreamSource(localStreamRef.current);
+        micSource.connect(destinationRef.current);
+      } catch (err) {
+        console.warn("Failed to add teacher mic to mixer:", err);
+      }
+    }
+
+    console.log("Audio mixer initialized.");
+  };
+
+  const addStreamToMixer = (stream) => {
+    if (data.role !== "teacher") return;
+    if (!audioContextRef.current || !destinationRef.current) return;
+
+    try {
+      const src = audioContextRef.current.createMediaStreamSource(stream);
+      src.connect(destinationRef.current);
+      console.log("Remote student stream added to mixer");
+    } catch (err) {
+      console.log("Mixer error:", err);
+    }
+  };
+
+  const startRecording = async () => {
+    if (data.role !== "teacher") return;
+    if (!mixedStreamRef.current) {
+      console.error("No mixed stream available — ensure mixer is setup and remote streams have been added.");
+      // Try to initialize if not done
+      setupAudioMixer();
+      if (!mixedStreamRef.current) return;
+    }
+
+    // resume audio context on user interaction if needed
+    if (audioContextRef.current && audioContextRef.current.state === "suspended") {
+      try {
+        await audioContextRef.current.resume();
+      } catch (e) {
+        console.warn("AudioContext resume failed:", e);
+      }
+    }
+
+    recordingRef.current = true;
+    setIsRecording(true);
+
+    const recorder = new MediaRecorder(mixedStreamRef.current, {
+      mimeType: "audio/webm"
+    });
+
+    recorder.ondataavailable = async (e) => {
+      if (!recordingRef.current || e.data.size === 0) return;
+
+      try {
+        const arrayBuffer = await e.data.arrayBuffer();
+        // convert to base64
+        const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+
+        // POST chunk to upload server
+        await fetch(`${UPLOAD_SERVER_URL}/upload-chunk`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ roomId: data.roomID, chunk: base64 })
+        });
+      } catch (err) {
+        console.error("Failed to upload chunk:", err);
+      }
+    };
+
+    recorder.onerror = (ev) => {
+      console.error("MediaRecorder error:", ev);
+    };
+
+    // chunk every 2s (like code2)
+    recorder.start(2000);
+    mediaRecorderRef.current = recorder;
+
+    console.log("Recording started...");
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current) {
+      recordingRef.current = false;
+      try {
+        mediaRecorderRef.current.stop();
+      } catch (e) {
+        console.warn("Error while stopping recorder:", e);
+      }
+      mediaRecorderRef.current = null;
+    }
+    setIsRecording(false);
+    console.log("Recording stopped.");
+  };
+
+  // Auto stop when closing tab
+  useEffect(() => {
+    const handler = () => {
+      stopRecording();
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, []);
+
+  // ----------------------------------------------------------------------
 
   return (
     <div
@@ -365,19 +517,60 @@ function WhiteboardPage() {
               <p style={{ margin: 0, fontWeight: "bold" }}>
                 You ({data.userID})
               </p>
-              <button
-                onClick={toggleMute}
-                style={{
-                  padding: "5px 12px",
-                  borderRadius: "5px",
-                  border: isMuted ? "1px solid #ccc" : "1px solid #d9534f",
-                  backgroundColor: isMuted ? "#f0f0f0" : "#d9534f",
-                  color: isMuted ? "#333" : "white",
-                  cursor: "pointer",
-                }}
-              >
-                {isMuted ? "Unmute" : "Mute"}
-              </button>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  onClick={toggleMute}
+                  style={{
+                    padding: "5px 12px",
+                    borderRadius: "5px",
+                    border: isMuted ? "1px solid #ccc" : "1px solid #d9534f",
+                    backgroundColor: isMuted ? "#f0f0f0" : "#d9534f",
+                    color: isMuted ? "#333" : "white",
+                    cursor: "pointer",
+                  }}
+                >
+                  {isMuted ? "Unmute" : "Mute"}
+                </button>
+
+                {/* Teacher recording controls */}
+                {data.role === "teacher" && (
+                  <>
+                    {!isRecording ? (
+                      <button
+                        onClick={() => {
+                          // ensure mixer exists
+                          setupAudioMixer();
+                          startRecording();
+                        }}
+                        style={{
+                          padding: "5px 12px",
+                          borderRadius: "5px",
+                          border: "1px solid #007bff",
+                          backgroundColor: "#007bff",
+                          color: "white",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Start Recording
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => stopRecording()}
+                        style={{
+                          padding: "5px 12px",
+                          borderRadius: "5px",
+                          border: "1px solid #d9534f",
+                          backgroundColor: "#d9534f",
+                          color: "white",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Stop Recording
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
 
             {/* Remote Participants */}
@@ -446,6 +639,15 @@ function WhiteboardPage() {
               </div>
             ))}
           </div>
+
+          {/* If upload server returns URL show download link */}
+          {downloadUrl && (
+            <div style={{ padding: 12, borderTop: "1px solid #eee" }}>
+              <a href={downloadUrl} target="_blank" rel="noopener noreferrer">
+                ⬇ Download Class Recording
+              </a>
+            </div>
+          )}
         </div>
         {/* I m daddy */}
         {/* Collapsed "Dot" View */}
@@ -482,8 +684,6 @@ function WhiteboardPage() {
           <span>Users</span>
         </button>
       </div>
-
-
     </div>
   );
 }
