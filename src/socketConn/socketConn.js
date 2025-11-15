@@ -33,7 +33,7 @@ function dataURLtoBlob(dataurl) {
 }
 
 export const connectWithSocketServer = (roomID, userID) => {
-  socket = io("https://sih-backend-2-sr15.onrender.com", {
+  socket = io("https://sih2025-whiteboard-backend.onrender.com", {
     transports: ['websocket', 'polling'],
     timeout: 20000,
     reconnection: true,
