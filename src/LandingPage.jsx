@@ -15,10 +15,11 @@ const LandingPage = () => {
     const queryRole = params.get("role");
     const queryRoomID = params.get("roomID");
     const userID = params.get("userID");
+    const classID = params.get("classID");
 
     if (queryRole && queryRoomID) {
       navigate("/whiteboard", {
-        state: { role: queryRole, roomID: queryRoomID, userID: userID },
+        state: { role: queryRole, roomID: queryRoomID, userID: userID, classID: classID },
       });
     }
   }, [location, navigate]);
