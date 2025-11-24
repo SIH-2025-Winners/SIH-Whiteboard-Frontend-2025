@@ -1,5 +1,5 @@
-import { io } from "socket.io-client";
 import pako from "pako";
+import { io } from "socket.io-client";
 import {
   removeCursorPosition,
   updateCursorPosition,
@@ -7,16 +7,23 @@ import {
 import { setFile } from "../store/fileSlice";
 import { setAnswerFromAI } from "../store/questionSlice";
 import { store } from "../store/store";
-import {
-  setElements,
-  setMessages,
-  setQuizAnswer,
-  setPollData,
-  updateElement,
-  removeElement,
-  toggleTheme, // Add theme toggle import
-} from "../Whiteboard/whiteboardSlice";
 import { resetSharingState, setSharedWebsite } from "../store/websiteSlice";
+import {
+  clearAllSlides,
+  clearSlide,
+  createSlide,
+  deleteSlide,
+  removeElement,
+  setElementsForSlide,
+  setMessages,
+  setPollData,
+  setQuizAnswer,
+  setUsers,
+  setWhiteboardState,
+  switchSlide,
+  toggleTheme,
+  updateElementInStore,
+} from "../Whiteboard/whiteboardSlice";
 
 let socket;
 
@@ -32,20 +39,33 @@ function dataURLtoBlob(dataurl) {
   return new Blob([u8arr], { type: mime });
 }
 
+export const decompress = (data) => {
+  try {
+    const binary = Uint8Array.from(atob(data), (c) => c.charCodeAt(0));
+    const uncompressed = pako.inflate(binary, { to: "string" });
+    return JSON.parse(uncompressed);
+  } catch (e) {
+    console.error("Decompression error:", e);
+    return [];
+  }
+};
+
 export const connectWithSocketServer = (roomID, userID) => {
-  socket = io("https://sih2025-whiteboard-backend.onrender.com", {
-    transports: ['websocket', 'polling'],
+  socket = io("http://localhost:3003", {
+    transports: ["websocket", "polling"],
     timeout: 20000,
     reconnection: true,
     reconnectionAttempts: 5,
-    reconnectionDelay: 1000
+    reconnectionDelay: 1000,
   });
   console.log(`room ID from connect to socket : : ${roomID} : : ${userID}`);
 
   socket.on("connect", () => {
     console.log("✅ Successfully connected to socket.io server");
+
     if (roomID && userID) {
-      socket.emit("join-room", { userID, roomID });
+      console.log(`\n\n\nfiring join-room ${roomID} and ${userID}\n\n`);
+      socket.emit("join-room", { UserID: userID, roomID });
     }
   });
 
@@ -65,9 +85,28 @@ export const connectWithSocketServer = (roomID, userID) => {
     console.error("❌ Socket reconnection failed:", error);
   });
 
-  socket.on("whiteboard-state", (data) => {
-    const { elements } = data;
-    store.dispatch(setElements(elements));
+  socket.on("whiteboard-state", ({ slides, currentSlide, users }) => {
+    // 1. Slides ko store me daalo
+    // 1. Slides ko store me daalo — pass an object payload
+    store.dispatch(
+      setWhiteboardState({
+        slides: slides || [],
+        currentSlide: typeof currentSlide === "number" ? currentSlide : 0,
+      })
+    );
+
+    // 3. User list me update karo
+    store.dispatch(setUsers(users || []));
+  });
+
+  socket.on("user-joined", ({ userID, socketId }) => {
+    console.log(`User joined: `, userID);
+
+    const state = store.getState().whiteboard;
+
+    const newList = [...state.users, userID];
+
+    store.dispatch(setUsers(newList));
   });
 
   socket.on("user-disconnected", ({ userID: disconnectedUserId }) => {
@@ -75,7 +114,53 @@ export const connectWithSocketServer = (roomID, userID) => {
     store.dispatch(removeCursorPosition(disconnectedUserId));
   });
 
-  socket.on("element-update", (elementData) => {
+  socket.on("slide-created", ({ slide, currentSlide }) => {
+    const state = store.getState().whiteboard;
+
+    // add slide to store
+    store.dispatch(createSlide(slide));
+
+    // set new active slide index
+    store.dispatch(switchSlide(currentSlide));
+  });
+
+  socket.on("slide-deleted", ({ slideId, currentSlide }) => {
+    const state = store.getState().whiteboard;
+    store.dispatch(deleteSlide(slideId));
+    if (typeof currentSlide === "number") {
+      store.dispatch(switchSlide(currentSlide));
+    }
+  });
+
+  socket.on("slide-renamed", ({ slideId, newTitle }) => {
+    const state = store.getState().whiteboard;
+
+    const updatedSlides = state.slides.map((s) =>
+      s.id === slideId ? { ...s, title: newTitle } : s
+    );
+
+    store.dispatch(
+      setWhiteboardState({
+        slides: updatedSlides,
+        currentSlide: state.currentSlide,
+      })
+    );
+  });
+
+  socket.on("slide-switched", ({ currentSlide, slide }) => {
+    // Redux update
+    store.dispatch(switchSlide(currentSlide));
+
+    // Us slide ke elements ko store me daalo
+    store.dispatch(
+      setElementsForSlide({
+        slideId: slide.id,
+        elements: slide.elements || [],
+      })
+    );
+  });
+
+  socket.on("element-updated", ({ elementData, slideId, slideIndex }) => {
     console.log("Client received element:", elementData.type, elementData.id);
     if (elementData.type === "image") {
       console.log(
@@ -85,36 +170,43 @@ export const connectWithSocketServer = (roomID, userID) => {
         elementData.height
       );
     }
-    store.dispatch(updateElement(elementData));
+    store.dispatch(
+      updateElementInStore({
+        elementData,
+        slideId,
+        slideIndex,
+      })
+    );
   });
 
   // Add this new socket listener for element removal
-  socket.on("element-removal", ({ elementId }) => {
-    console.log(`Received element removal for ID: ${elementId}`);
-    store.dispatch(removeElement(elementId));
+
+  socket.on("element-removal", ({ elementId, slideId }) => {
+    console.log(`ℹ Removing element ${elementId} from slide ${slideId}`);
+    store.dispatch(removeElement({ elementId, slideId }));
   });
 
-  socket.on("whiteboard-clear", () => {
-    setTimeout(() => {
-      store.dispatch(setElements([]));
-    }, 500);
+  socket.on("whiteboard-clear", ({ scope, slideId }) => {
+    if (scope === "all") {
+      store.dispatch(clearAllSlides());
+    } else {
+      store.dispatch(clearSlide(slideId));
+    }
   });
 
   // Theme synchronization now handled via message system above
 
-
-
   socket.on("cursor-position", (cursorData) => {
     setTimeout(() => {
       store.dispatch(updateCursorPosition(cursorData));
-    }, 500);
+    }, 350);
   });
 
   socket.on("message", (data) => {
     try {
       // Extract the compressed message from the data object
       const compressedMessage = data.compressedMessage || data;
-      
+
       // Decompress
       const binaryString = atob(compressedMessage);
       const charCodes = new Uint8Array(binaryString.length);
@@ -126,14 +218,17 @@ export const connectWithSocketServer = (roomID, userID) => {
       // message unused in current implementation
 
       // Check if any message is a theme change command
-      const hasThemeChange = messageCopy.some(msg => {
+      const hasThemeChange = messageCopy.some((msg) => {
         try {
-          if (typeof msg.text === 'string') {
+          if (typeof msg.text === "string") {
             const parsed = JSON.parse(msg.text);
-            if (parsed.type === 'THEME_CHANGE') {
-              console.log("🎨 Theme change received via message system:", parsed.isDarkTheme ? "blackboard" : "whiteboard");
+            if (parsed.type === "THEME_CHANGE") {
+              console.log(
+                "🎨 Theme change received via message system:",
+                parsed.isDarkTheme ? "blackboard" : "whiteboard"
+              );
               console.log("🔍 From user:", parsed.from);
-              
+
               const currentState = store.getState().whiteboard;
               if (currentState.isDarkTheme !== parsed.isDarkTheme) {
                 console.log("✅ Applying theme change via message system");
@@ -151,16 +246,16 @@ export const connectWithSocketServer = (roomID, userID) => {
       // Only process as regular messages if no theme change was found
       if (!hasThemeChange) {
         // Ensure all messages in messageCopy have proper structure
-        const updatedMessages = messageCopy.map(msg => {
+        const updatedMessages = messageCopy.map((msg) => {
           const userId = msg.user || msg.userID || userID;
           return {
             id: msg.id || Date.now().toString() + Math.random(),
             text: msg.text || msg.message,
             user: userId,
             userID: userId,
-            role: msg.role || (userId === 'teacher' ? 'teacher' : 'student'),
+            role: msg.role || (userId === "teacher" ? "teacher" : "student"),
             timestamp: msg.timestamp || new Date().toISOString(),
-            roomID: msg.roomID || roomID
+            roomID: msg.roomID || roomID,
           };
         });
 
@@ -176,7 +271,7 @@ export const connectWithSocketServer = (roomID, userID) => {
   socket.on("quiz", (pollData) => {
     // Store the complete poll data in Redux
     store.dispatch(setPollData(pollData));
-    
+
     // Also set quizAnswer for backward compatibility
     if (pollData.correctAnswer) {
       store.dispatch(setQuizAnswer(pollData.correctAnswer));
@@ -184,8 +279,8 @@ export const connectWithSocketServer = (roomID, userID) => {
   });
 
   // Local testing: Listen for localStorage changes (cross-tab communication)
-  window.addEventListener('storage', (e) => {
-    if (e.key === 'currentPollData' && e.newValue) {
+  window.addEventListener("storage", (e) => {
+    if (e.key === "currentPollData" && e.newValue) {
       try {
         const pollData = JSON.parse(e.newValue);
         store.dispatch(setPollData(pollData));
@@ -226,7 +321,7 @@ export const connectWithSocketServer = (roomID, userID) => {
     try {
       const decompressed = pako.inflate(compressedFileData, { to: "string" });
       const { fileData } = JSON.parse(decompressed);
-      // fileName and fileType unused in current implementation  
+      // fileName and fileType unused in current implementation
       store.dispatch(setFile(fileData));
     } catch (error) {
       console.error("Error processing other file:", error);
@@ -249,10 +344,33 @@ export const connectWithSocketServer = (roomID, userID) => {
     store.dispatch(resetSharingState());
   });
 
+  socket.on("elements-updated", ({ compressed, slideId }) => {
+    const decompressed = decompress(compressed);
 
+    console.log(
+      "Full slide updated:",
+      decompressed.length,
+      "elements, slide:",
+      slideId
+    );
+
+    store.dispatch(
+      setElementsForSlide({
+        slideId,
+        elements: decompressed,
+      })
+    );
+  });
+
+  
 };
 
-export const emitElementUpdate = (elementData, roomID) => {
+export const emitElementUpdate = (
+  elementData,
+  roomID,
+  slideId = null,
+  slideIndex = null
+) => {
   console.log(`\n\n\n\nElement DAta : \n\n ${JSON.stringify(elementData)}`);
   // Ensure all properties are preserved, especially for images
   const completeElementData = {
@@ -266,10 +384,20 @@ export const emitElementUpdate = (elementData, roomID) => {
   };
 
   console.log("Emitting element update:", completeElementData);
-  socket.emit("element-update", { elementData: completeElementData, roomID });
+  socket.emit("element-update", {
+    elementData: completeElementData,
+    roomID,
+    slideId,
+    slideIndex,
+  });
 };
 
-export const emitImageElement = (imageElementData, roomID) => {
+export const emitImageElement = (
+  imageElementData,
+  roomID,
+  slideId = null,
+  slideIndex = null
+) => {
   console.log("Emitting image element:", imageElementData);
   const completeImageData = {
     ...imageElementData,
@@ -294,20 +422,40 @@ export const emitImageElement = (imageElementData, roomID) => {
   socket.emit("element-update", {
     elementData: completeImageData,
     roomID,
+    slideId,
+    slideIndex,
   });
 };
 
 // In your socketConn.js file
-export const emitElementRemoval = (elementId, roomID) => {
-  console.log(
-    `Emitting element removal for ID: ${elementId} in room: ${roomID}`
-  );
-
-  socket.emit("element-removal", { elementId, roomID });
+export const emitElementRemoval = (elementId, roomID, slideId) => {
+  socket.emit("element-removal", {
+    elementId,
+    roomID,
+    slideId, // 👈 VERY IMPORTANT
+  });
 };
 
-export const emitClearWhiteboard = (roomID) => {
-  socket.emit("whiteboard-clear", roomID);
+export const emitElementsUpdate = (
+  elements,
+  roomID,
+  slideId = null,
+  slideIndex = null
+) => {
+  socket.emit("elements-update", {
+    elements,
+    roomID,
+    slideId,
+    slideIndex,
+  });
+};
+
+export const emitClearWhiteboard = (roomID, slideId) => {
+  socket.emit("whiteboard-clear", {
+    roomID,
+    scope: "current",
+    slideId,
+  });
 };
 
 export const emitCursorPosition = ({ cursorData, roomID }) => {
@@ -325,21 +473,23 @@ export const emitMessages = ({ userID, message, roomID, messageCopy }) => {
 
 export const quiz = (pollData) => {
   socket.emit("quiz", pollData);
-  
+
   // For local testing: store in localStorage to share between tabs
-  localStorage.setItem('currentPollData', JSON.stringify(pollData));
-  
+  localStorage.setItem("currentPollData", JSON.stringify(pollData));
+
   // Dispatch to current tab
   store.dispatch(setPollData(pollData));
   if (pollData.correctAnswer) {
     store.dispatch(setQuizAnswer(pollData.correctAnswer));
   }
-  
+
   // Trigger storage event for other tabs
-  window.dispatchEvent(new StorageEvent('storage', {
-    key: 'currentPollData',
-    newValue: JSON.stringify(pollData)
-  }));
+  window.dispatchEvent(
+    new StorageEvent("storage", {
+      key: "currentPollData",
+      newValue: JSON.stringify(pollData),
+    })
+  );
 };
 
 export const emitQuestion = ({ userID, question }) => {
@@ -359,6 +509,23 @@ export const emitFile = ({ roomID, fileName, fileType, fileData }) => {
   socket.emit("file", { roomID, fileName, fileType, fileData });
 };
 
+export const emitRemoveCursor = ({ roomID, userId }) => {
+
+  console.log(`\n\nuserID : ${userId}\n\n`)
+  if (socket && socket.connected) {
+    socket.emit("remove-cursor-position", { roomID, userId });
+  }
+};
+
+// Listen for removal of cursors from others
+export const listenForCursorRemoval = () => {
+  if (!socket) return;
+  socket.on("cursor-position-removed", ({ userId }) => {
+    console.log(`\n\n\n\nfdsfbsdfksdsjkf\n\n\n${userId}\n\n\n\n\n\n`)
+    store.dispatch(removeCursorPosition(userId));
+  });
+};
+
 export const emitWebsiteShare = ({ websiteUrl, roomID, userID }) => {
   try {
     new URL(websiteUrl);
@@ -374,36 +541,70 @@ export const emitWebsiteClosed = ({ roomID, userID }) => {
   console.log(`Closing website sharing in room: ${roomID}`);
 };
 
+export const emitCreateSlide = ({ roomID, newSlideTitle }) => {
+  socket.emit("create-slide", {
+    roomID,
+    title: newSlideTitle, // string
+  });
+};
+
+export const emitDeleteSlide = ({ roomID, slideId }) => {
+  socket.emit("delete-slide", {
+    roomID,
+    slideId,
+  });
+};
+
+export const emitRenameSlide = ({ roomID, slideId, newTitle }) => {
+  socket.emit("rename-slide", {
+    roomID,
+    slideId,
+    newTitle,
+  });
+};
+
+export const emitSwitchSlide = ({ roomID, slideId }) => {
+  // socket.emit("switch-slide", {
+  //   roomID,
+  //   slideIndex: index,
+  // });
+
+  socket.emit("switch-slide", {
+    roomID,
+    slideId,
+  });
+};
+
 // Theme synchronization - teacher emits theme changes to students using existing message system
 export const emitThemeChange = ({ roomID, isDarkTheme, userID }) => {
   console.log("🎨 Teacher emitting theme change:");
   console.log("  Room:", roomID);
-  console.log("  Theme:", isDarkTheme ? 'blackboard' : 'whiteboard');
+  console.log("  Theme:", isDarkTheme ? "blackboard" : "whiteboard");
   console.log("  Teacher ID:", userID);
-  
+
   // Use the existing message system to send theme changes
   const themeMessage = {
     id: Date.now().toString() + Math.random(),
     text: JSON.stringify({
-      type: 'THEME_CHANGE',
+      type: "THEME_CHANGE",
       isDarkTheme: isDarkTheme,
       from: userID,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     }),
     user: userID,
     userID: userID,
-    role: 'teacher',
+    role: "teacher",
     timestamp: new Date().toISOString(),
-    roomID: roomID
+    roomID: roomID,
   };
-  
-  emitMessages({ 
-    userID, 
-    message: themeMessage.text, 
-    roomID, 
-    messageCopy: [themeMessage] // messageCopy should be an array
+
+  emitMessages({
+    userID,
+    message: themeMessage.text,
+    roomID,
+    messageCopy: [themeMessage], // messageCopy should be an array
   });
-  
+
   console.log(`✅ Theme change emitted via message system`);
 };
 

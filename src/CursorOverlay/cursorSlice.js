@@ -12,6 +12,7 @@ const cursorSlice = createSlice({
       const { x, y, userId } = action.payload;
 
       const index = state.cursors.findIndex((c) => c.userId === userId);
+      console.log( `\n\n\ndhksabdhksadbasdajsdbaskdjbdaskdbask\n\n\n${state.cursors}\n\n\n\n\n`)
 
       if (index !== -1) {
         state.cursors[index] = {
@@ -29,6 +30,7 @@ const cursorSlice = createSlice({
     },
     removeCursorPosition: (state, action) => {
       state.cursors = state.cursors.filter((c) => c.userId !== action.payload);
+      console.log(state.cursors)
     },
   },
 });

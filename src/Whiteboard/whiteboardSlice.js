@@ -3,95 +3,184 @@ import { invertAllElementColors } from "./utils/colorInverter";
 
 const initialState = {
   tool: null,
-  elements: [],
-  messages: [{}],
+  slides: [], // 🆕 all slides
+  currentSlide: 0, // 🆕 active slide index
+  messages: [],
+  users: [],
   quizAnswer: null,
-  pollData: null, // Add poll data state for complete poll information
-  selectedColor: "#000000", // Default black color
-  isDarkTheme: false, // Theme state: false = light (whiteboard), true = dark (blackboard)
+  pollData: null,
+  selectedColor: "#000000",
+  isDarkTheme: false,
 };
 
 const whiteboardSlice = createSlice({
   name: "whiteboard",
   initialState,
   reducers: {
+    // ==========================
+    // Slide Management
+    // ==========================
+    setWhiteboardState: (state, action) => {
+      state.slides = action.payload.slides;
+      state.currentSlide = action.payload.currentSlide;
+
+      const payload = action.payload || {};
+      const incomingSlides = Array.isArray(payload.slides)
+        ? payload.slides
+        : [];
+
+      // Ensure at least one slide exists
+      state.slides =
+        incomingSlides.length > 0
+          ? incomingSlides
+          : [
+              {
+                id: payload.currentSlideId || "slide-1",
+                title: payload.defaultTitle || "Slide 1",
+                elements: [],
+              },
+            ];
+
+      const requestedIndex =
+        typeof payload.currentSlide === "number" ? payload.currentSlide : 0;
+      state.currentSlide = Math.max(
+        0,
+        Math.min(requestedIndex, state.slides.length - 1)
+      );
+    },
+
+    switchSlide: (state, action) => {
+      state.currentSlide = action.payload;
+    },
+
+    createSlide: (state, action) => {
+      state.slides.push({
+        id: action.payload.id,
+        title: action.payload.title,
+        elements: [],
+      });
+      state.currentSlide = state.slides.length - 1;
+    },
+
+    deleteSlide: (state, action) => {
+      const slideId = action.payload;
+      state.slides = state.slides.filter((s) => s.id !== slideId);
+      if (state.currentSlide >= state.slides.length) {
+        state.currentSlide = Math.max(0, state.slides.length - 1);
+      }
+    },
+
+    // ==========================
+    // ELEMENT OPERATIONS
+    // ==========================
+    updateElementInStore: (state, action) => {
+      const { elementData, slideId } = action.payload;
+
+      const slideIndex = state.slides.findIndex((s) => s.id === slideId);
+      if (slideIndex === -1) return;
+
+      const slide = state.slides[slideIndex];
+      const idx = slide.elements.findIndex((e) => e.id === elementData.id);
+
+      if (idx === -1) {
+        slide.elements.push(elementData);
+      } else {
+        slide.elements[idx] = elementData;
+      }
+    },
+
+    setElementsForSlide: (state, action) => {
+      const { slideId, elements } = action.payload;
+      const slide = state.slides.find((s) => s.id === slideId);
+      if (!slide) return;
+      slide.elements = elements;
+    },
+
+    removeElement: (state, action) => {
+      const { elementId, slideId } = action.payload;
+      const slide = state.slides.find((s) => s.id === slideId);
+      if (!slide) return;
+      slide.elements = slide.elements.filter((e) => e.id !== elementId);
+    },
+
+    clearSlide: (state, action) => {
+      const slideId = action.payload;
+      const slide = state.slides.find((s) => s.id === slideId);
+      if (slide) slide.elements = [];
+    },
+
+    clearAllSlides: (state) => {
+      state.slides.forEach((s) => (s.elements = []));
+    },
+
+    // ==========================
+    // THEMING
+    // ==========================
+    toggleTheme: (state) => {
+      state.isDarkTheme = !state.isDarkTheme;
+
+      // Invert all elements in all slides
+      state.slides.forEach((slide) => {
+        slide.elements = invertAllElementColors(slide.elements);
+      });
+
+      if (state.isDarkTheme) {
+        state.selectedColor =
+          state.selectedColor === "#000000" ? "#ffffff" : state.selectedColor;
+      } else {
+        state.selectedColor =
+          state.selectedColor === "#ffffff" ? "#000000" : state.selectedColor;
+      }
+    },
+
     setToolType: (state, action) => {
       state.tool = action.payload;
     },
-    updateElement: (state, action) => {
-      const { id } = action.payload;
-      
-      // Check if this element was recently erased (prevent socket restoration)
-      if (window.erasedElementsSet && window.erasedElementsSet.has(id)) {
-        console.log(`🚫 Blocked restoration of erased element: ${id}`);
-        return; // Don't add/update erased elements
-      }
 
-      const index = state.elements.findIndex((element) => element.id === id);
-
-      if (index === -1) {
-        state.elements.push(action.payload);
-      } else {
-        state.elements[index] = action.payload;
-      }
-    },
-    setElements: (state, action) => {
-      state.elements = action.payload;
-    },
     setMessages: (state, action) => {
       state.messages = action.payload;
     },
+
     setQuizAnswer: (state, action) => {
       state.quizAnswer = action.payload;
     },
+
     setPollData: (state, action) => {
       state.pollData = action.payload;
     },
+
     setSelectedColor: (state, action) => {
       state.selectedColor = action.payload;
     },
-    toggleTheme: (state) => {
-      state.isDarkTheme = !state.isDarkTheme;
-      
-      // Invert all element colors when theme changes
-      state.elements = invertAllElementColors(state.elements);
-      
-      // Auto-adjust default color based on theme
-      if (state.isDarkTheme) {
-        // For dark theme (blackboard), use light colors
-        state.selectedColor = state.selectedColor === "#000000" ? "#ffffff" : state.selectedColor;
-      } else {
-        // For light theme (whiteboard), use dark colors
-        state.selectedColor = state.selectedColor === "#ffffff" ? "#000000" : state.selectedColor;
-      }
-    },
-    // Add this new reducer for removing elements
-    // In your whiteboardSlice.js - verify this reducer
-    removeElement: (state, action) => {
-      const elementId = action.payload;
-      console.log(
-        `Removing element ${elementId} from state. Before: ${state.elements.length} elements`
-      );
 
-      state.elements = state.elements.filter(
-        (element) => element.id !== elementId
-      );
-
-      console.log(`After removal: ${state.elements.length} elements`);
+    setUsers: (state, action) => {
+      state.users = action.payload;
     },
   },
 });
 
 export const {
-  setToolType,
-  updateElement,
-  setElements,
-  setMessages,
-  setQuizAnswer,
-  setPollData,
-  setSelectedColor,
-  toggleTheme, // Add theme toggle export
+  // slide
+  setWhiteboardState,
+  switchSlide,
+  createSlide,
+  deleteSlide,
+  setUsers,
+
+  // elements
+  updateElementInStore,
+  setElementsForSlide,
   removeElement,
+  clearSlide,
+  clearAllSlides,
+
+  // misc
+  setToolType,
+  setMessages,
+  setPollData,
+  setQuizAnswer,
+  toggleTheme,
+  setSelectedColor,
 } = whiteboardSlice.actions;
 
 export default whiteboardSlice.reducer;

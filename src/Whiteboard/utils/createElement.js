@@ -4,7 +4,17 @@ import { toolTypes } from "../../constants";
 
 const generator = rough.generator();
 
-const generateRectangle = ({ x1, y1, x2, y2, color, filling, fillStyle }) => {
+const generateRectangle = ({
+  x1,
+  y1,
+  x2,
+  y2,
+  color,
+  filling,
+  fillStyle,
+  currentSlideId,
+  currentSlide,
+}) => {
   console.log("generateRectangle called with color:", color);
   console.log(`\n\nfillinf style  here \n\n${fillStyle}\n\n`);
   const toFillColor = filling ? color : false;
@@ -15,20 +25,42 @@ const generateRectangle = ({ x1, y1, x2, y2, color, filling, fillStyle }) => {
     hachureGap: 8,
     // fillStyle: "",
     fillStyle: fillStyle,
+    currentSlideId,
+    currentSlide,
   });
 };
 
-const generateLine = ({ x1, y1, x2, y2, color }) => {
+const generateLine = ({
+  x1,
+  y1,
+  x2,
+  y2,
+  color,
+  currentSlideId,
+  currentSlide,
+}) => {
   const strokeColor = color || "#000000";
 
   return generator.line(x1, y1, x2, y2, {
     stroke: strokeColor,
     strokeWidth: 2,
     roughness: 1,
+    currentSlideId,
+    currentSlide,
   });
 };
 
-const generateCircle = ({ x1, y1, x2, y2, color, filling, fillStylee }) => {
+const generateCircle = ({
+  x1,
+  y1,
+  x2,
+  y2,
+  color,
+  filling,
+  fillStylee,
+  currentSlideId,
+  currentSlide,
+}) => {
   const toFillColor = filling ? color : false;
   const width = Math.abs(x2 - x1);
   const height = Math.abs(y2 - y1);
@@ -42,10 +74,22 @@ const generateCircle = ({ x1, y1, x2, y2, color, filling, fillStylee }) => {
     hachureAngle: 60,
     hachureGap: 8,
     fillStyle: fillStylee,
+    currentSlideId,
+    currentSlide,
   });
 };
 
-const generateTriangle = ({ x1, y1, x2, y2, color, filling, fillStylee }) => {
+const generateTriangle = ({
+  x1,
+  y1,
+  x2,
+  y2,
+  color,
+  filling,
+  fillStylee,
+  currentSlideId,
+  currentSlide,
+}) => {
   const toFillColor = filling ? color : false;
   // Ensure the coordinates are valid numbers AND not identical
   if (
@@ -72,6 +116,8 @@ const generateTriangle = ({ x1, y1, x2, y2, color, filling, fillStylee }) => {
         hachureGap: 8,
         roughness: 1,
         fillStyle: fillStylee,
+        currentSlideId,
+        currentSlide,
       }
     );
   }
@@ -94,6 +140,8 @@ const generateTriangle = ({ x1, y1, x2, y2, color, filling, fillStylee }) => {
         hachureGap: 8,
         roughness: 1,
         fillStyle: fillStylee,
+        currentSlideId,
+        currentSlide,
       }
     );
   }
@@ -120,11 +168,23 @@ const generateTriangle = ({ x1, y1, x2, y2, color, filling, fillStylee }) => {
       hachureGap: 8,
       roughness: 1,
       fillStyle: fillStylee,
+      currentSlideId,
+      currentSlide,
     }
   );
 };
 
-const generateDiamond = ({ x1, y1, x2, y2, color, filling, fillStylee }) => {
+const generateDiamond = ({
+  x1,
+  y1,
+  x2,
+  y2,
+  color,
+  filling,
+  fillStylee,
+  currentSlideId,
+  currentSlide,
+}) => {
   const toFillColor = filling ? color : false;
   const minX = Math.min(x1, x2);
   const maxX = Math.max(x1, x2);
@@ -135,10 +195,10 @@ const generateDiamond = ({ x1, y1, x2, y2, color, filling, fillStylee }) => {
 
   return generator.polygon(
     [
-      [centerX, minY],     // top
-      [maxX, centerY],     // right
-      [centerX, maxY],     // bottom
-      [minX, centerY],     // left
+      [centerX, minY], // top
+      [maxX, centerY], // right
+      [centerX, maxY], // bottom
+      [minX, centerY], // left
     ],
     {
       fill: toFillColor,
@@ -146,11 +206,23 @@ const generateDiamond = ({ x1, y1, x2, y2, color, filling, fillStylee }) => {
       hachureAngle: 60,
       hachureGap: 8,
       fillStyle: fillStylee,
+      currentSlideId,
+      currentSlide,
     }
   );
 };
 
-const generateStar = ({ x1, y1, x2, y2, color, filling, fillStylee }) => {
+const generateStar = ({
+  x1,
+  y1,
+  x2,
+  y2,
+  color,
+  filling,
+  fillStylee,
+  currentSlideId,
+  currentSlide,
+}) => {
   const toFillColor = filling ? color : false;
   const minX = Math.min(x1, x2);
   const maxX = Math.max(x1, x2);
@@ -178,10 +250,22 @@ const generateStar = ({ x1, y1, x2, y2, color, filling, fillStylee }) => {
     hachureAngle: 60,
     hachureGap: 8,
     fillStyle: fillStylee,
+    currentSlideId,
+    currentSlide,
   });
 };
 
-const generateArrow = ({ x1, y1, x2, y2, color, filling, fillStylee }) => {
+const generateArrow = ({
+  x1,
+  y1,
+  x2,
+  y2,
+  color,
+  filling,
+  fillStylee,
+  currentSlideId,
+  currentSlide,
+}) => {
   const toFillColor = filling ? color : false;
   const width = Math.abs(x2 - x1);
   const height = Math.abs(y2 - y1);
@@ -190,21 +274,21 @@ const generateArrow = ({ x1, y1, x2, y2, color, filling, fillStylee }) => {
   const minY = Math.min(y1, y2);
   const maxY = Math.max(y1, y2);
   const centerY = (minY + maxY) / 2;
-  
+
   const arrowHeadWidth = width * 0.3;
   const arrowBodyHeight = height * 0.4;
   const arrowBodyY1 = centerY - arrowBodyHeight / 2;
   const arrowBodyY2 = centerY + arrowBodyHeight / 2;
-  
+
   return generator.polygon(
     [
-      [minX, arrowBodyY1],                    // top left of body
-      [maxX - arrowHeadWidth, arrowBodyY1],   // top right of body
-      [maxX - arrowHeadWidth, minY],          // top of arrow head
-      [maxX, centerY],                        // tip of arrow
-      [maxX - arrowHeadWidth, maxY],          // bottom of arrow head
-      [maxX - arrowHeadWidth, arrowBodyY2],   // bottom right of body
-      [minX, arrowBodyY2],                    // bottom left of body
+      [minX, arrowBodyY1], // top left of body
+      [maxX - arrowHeadWidth, arrowBodyY1], // top right of body
+      [maxX - arrowHeadWidth, minY], // top of arrow head
+      [maxX, centerY], // tip of arrow
+      [maxX - arrowHeadWidth, maxY], // bottom of arrow head
+      [maxX - arrowHeadWidth, arrowBodyY2], // bottom right of body
+      [minX, arrowBodyY2], // bottom left of body
     ],
     {
       fill: toFillColor,
@@ -212,11 +296,23 @@ const generateArrow = ({ x1, y1, x2, y2, color, filling, fillStylee }) => {
       hachureAngle: 60,
       hachureGap: 8,
       fillStyle: fillStylee,
+      currentSlideId,
+      currentSlide,
     }
   );
 };
 
-const generatePentagon = ({ x1, y1, x2, y2, color, filling, fillStylee }) => {
+const generatePentagon = ({
+  x1,
+  y1,
+  x2,
+  y2,
+  color,
+  filling,
+  fillStylee,
+  currentSlideId,
+  currentSlide,
+}) => {
   const toFillColor = filling ? color : false;
   const minX = Math.min(x1, x2);
   const maxX = Math.max(x1, x2);
@@ -240,10 +336,22 @@ const generatePentagon = ({ x1, y1, x2, y2, color, filling, fillStylee }) => {
     hachureAngle: 60,
     hachureGap: 8,
     fillStyle: fillStylee,
+    currentSlideId,
+    currentSlide,
   });
 };
 
-const generateHexagon = ({ x1, y1, x2, y2, color, filling, fillStylee }) => {
+const generateHexagon = ({
+  x1,
+  y1,
+  x2,
+  y2,
+  color,
+  filling,
+  fillStylee,
+  currentSlideId,
+  currentSlide,
+}) => {
   const toFillColor = filling ? color : false;
   const minX = Math.min(x1, x2);
   const maxX = Math.max(x1, x2);
@@ -267,10 +375,22 @@ const generateHexagon = ({ x1, y1, x2, y2, color, filling, fillStylee }) => {
     hachureAngle: 60,
     hachureGap: 8,
     fillStyle: fillStylee,
+    currentSlideId,
+    currentSlide,
   });
 };
 
-const generateHeart = ({ x1, y1, x2, y2, color, filling, fillStylee }) => {
+const generateHeart = ({
+  x1,
+  y1,
+  x2,
+  y2,
+  color,
+  filling,
+  fillStylee,
+  currentSlideId,
+  currentSlide,
+}) => {
   const toFillColor = filling ? color : false;
   const minX = Math.min(x1, x2);
   const maxX = Math.max(x1, x2);
@@ -288,8 +408,16 @@ const generateHeart = ({ x1, y1, x2, y2, color, filling, fillStylee }) => {
     const t = i / steps;
     const angle = t * 2 * Math.PI;
     // Heart equation: x = 16sin³(t), y = 13cos(t) - 5cos(2t) - 2cos(3t) - cos(4t)
-    const x = centerX + (width * 0.15) * Math.pow(Math.sin(angle), 3);
-    const y = topY - (height * 0.1) * (13 * Math.cos(angle) - 5 * Math.cos(2 * angle) - 2 * Math.cos(3 * angle) - Math.cos(4 * angle)) / 16;
+    const x = centerX + width * 0.15 * Math.pow(Math.sin(angle), 3);
+    const y =
+      topY -
+      (height *
+        0.1 *
+        (13 * Math.cos(angle) -
+          5 * Math.cos(2 * angle) -
+          2 * Math.cos(3 * angle) -
+          Math.cos(4 * angle))) /
+        16;
     points.push([x, y]);
   }
 
@@ -299,10 +427,22 @@ const generateHeart = ({ x1, y1, x2, y2, color, filling, fillStylee }) => {
     hachureAngle: 60,
     hachureGap: 8,
     fillStyle: fillStylee,
+    currentSlideId,
+    currentSlide,
   });
 };
 
-const generateCloud = ({ x1, y1, x2, y2, color, filling, fillStylee }) => {
+const generateCloud = ({
+  x1,
+  y1,
+  x2,
+  y2,
+  color,
+  filling,
+  fillStylee,
+  currentSlideId,
+  currentSlide,
+}) => {
   const toFillColor = filling ? color : false;
   const minX = Math.min(x1, x2);
   const maxX = Math.max(x1, x2);
@@ -310,19 +450,35 @@ const generateCloud = ({ x1, y1, x2, y2, color, filling, fillStylee }) => {
   const maxY = Math.max(y1, y2);
   const width = maxX - minX;
   const height = maxY - minY;
-  
+
   // Create a more realistic cloud using smooth curves
   // Cloud is made of connected curved sections that look more natural
   const cloudPath = `
     M ${minX + width * 0.15} ${maxY}
-    Q ${minX + width * 0.05} ${minY + height * 0.8} ${minX + width * 0.1} ${minY + height * 0.6}
-    Q ${minX} ${minY + height * 0.4} ${minX + width * 0.15} ${minY + height * 0.3}
-    Q ${minX + width * 0.1} ${minY + height * 0.1} ${minX + width * 0.25} ${minY + height * 0.15}
-    Q ${minX + width * 0.35} ${minY} ${minX + width * 0.5} ${minY + height * 0.1}
-    Q ${minX + width * 0.65} ${minY} ${minX + width * 0.75} ${minY + height * 0.15}
-    Q ${minX + width * 0.9} ${minY + height * 0.1} ${minX + width * 0.85} ${minY + height * 0.3}
-    Q ${maxX} ${minY + height * 0.4} ${minX + width * 0.9} ${minY + height * 0.6}
-    Q ${minX + width * 0.95} ${minY + height * 0.8} ${minX + width * 0.85} ${maxY}
+    Q ${minX + width * 0.05} ${minY + height * 0.8} ${minX + width * 0.1} ${
+    minY + height * 0.6
+  }
+    Q ${minX} ${minY + height * 0.4} ${minX + width * 0.15} ${
+    minY + height * 0.3
+  }
+    Q ${minX + width * 0.1} ${minY + height * 0.1} ${minX + width * 0.25} ${
+    minY + height * 0.15
+  }
+    Q ${minX + width * 0.35} ${minY} ${minX + width * 0.5} ${
+    minY + height * 0.1
+  }
+    Q ${minX + width * 0.65} ${minY} ${minX + width * 0.75} ${
+    minY + height * 0.15
+  }
+    Q ${minX + width * 0.9} ${minY + height * 0.1} ${minX + width * 0.85} ${
+    minY + height * 0.3
+  }
+    Q ${maxX} ${minY + height * 0.4} ${minX + width * 0.9} ${
+    minY + height * 0.6
+  }
+    Q ${minX + width * 0.95} ${minY + height * 0.8} ${
+    minX + width * 0.85
+  } ${maxY}
     Z
   `;
 
@@ -336,6 +492,8 @@ const generateCloud = ({ x1, y1, x2, y2, color, filling, fillStylee }) => {
     bowing: 0.6, // Add slight curvature variations
     strokeWidth: 2.5,
     curveTightness: 0, // Makes curves smoother
+    currentSlideId,
+    currentSlide,
   });
 };
 
@@ -354,6 +512,8 @@ export const createElement = ({
   color,
   fill,
   strokeW,
+  currentSlideId,
+  currentSlide,
 }) => {
   let roughElement;
   const elementColor = color || "#000000";
@@ -371,6 +531,8 @@ export const createElement = ({
         color,
         filling: fill,
         fillStyle: fillColorStyle,
+        currentSlideId,
+        currentSlide,
       });
       return {
         id: id,
@@ -381,10 +543,20 @@ export const createElement = ({
         x2,
         y2,
         color: elementColor,
+        currentSlideId,
+        currentSlide,
       };
 
     case toolTypes.LINE:
-      roughElement = generateLine({ x1, x2, y1, y2, color });
+      roughElement = generateLine({
+        x1,
+        x2,
+        y1,
+        y2,
+        color,
+        currentSlideId,
+        currentSlide,
+      });
       return {
         id: id,
         roughElement,
@@ -394,6 +566,8 @@ export const createElement = ({
         x2,
         y2,
         color: elementColor,
+        currentSlideId,
+        currentSlide,
       };
 
     case toolTypes.TRIANGLE:
@@ -406,6 +580,8 @@ export const createElement = ({
         fill,
         filling: fill,
         fillStylee: fillColorStyle,
+        currentSlideId,
+        currentSlide,
       });
       return {
         id: id,
@@ -416,6 +592,8 @@ export const createElement = ({
         x2,
         y2,
         color: elementColor, // Fixed: was using color directly
+        currentSlideId,
+        currentSlide,
       };
 
     case toolTypes.CIRCLE:
@@ -428,6 +606,8 @@ export const createElement = ({
         fill,
         filling: fill,
         fillStylee: fillColorStyle,
+        currentSlideId,
+        currentSlide,
       });
       return {
         id: id,
@@ -438,6 +618,8 @@ export const createElement = ({
         x2,
         y2,
         color: elementColor,
+        currentSlideId,
+        currentSlide,
       };
 
     case toolTypes.DIAMOND:
@@ -449,6 +631,8 @@ export const createElement = ({
         color,
         filling: fill,
         fillStylee: fillColorStyle,
+        currentSlideId,
+        currentSlide,
       });
       return {
         id: id,
@@ -459,6 +643,8 @@ export const createElement = ({
         x2,
         y2,
         color: elementColor,
+        currentSlideId,
+        currentSlide,
       };
 
     case toolTypes.STAR:
@@ -470,6 +656,8 @@ export const createElement = ({
         color,
         filling: fill,
         fillStylee: fillColorStyle,
+        currentSlideId,
+        currentSlide,
       });
       return {
         id: id,
@@ -480,6 +668,8 @@ export const createElement = ({
         x2,
         y2,
         color: elementColor,
+        currentSlideId,
+        currentSlide,
       };
 
     case toolTypes.ARROW:
@@ -491,6 +681,8 @@ export const createElement = ({
         color,
         filling: fill,
         fillStylee: fillColorStyle,
+        currentSlideId,
+        currentSlide,
       });
       return {
         id: id,
@@ -501,6 +693,8 @@ export const createElement = ({
         x2,
         y2,
         color: elementColor,
+        currentSlideId,
+        currentSlide,
       };
 
     case toolTypes.PENTAGON:
@@ -512,6 +706,8 @@ export const createElement = ({
         color,
         filling: fill,
         fillStylee: fillColorStyle,
+        currentSlideId,
+        currentSlide,
       });
       return {
         id: id,
@@ -522,6 +718,8 @@ export const createElement = ({
         x2,
         y2,
         color: elementColor,
+        currentSlideId,
+        currentSlide,
       };
 
     case toolTypes.HEXAGON:
@@ -533,6 +731,8 @@ export const createElement = ({
         color,
         filling: fill,
         fillStylee: fillColorStyle,
+        currentSlideId,
+        currentSlide,
       });
       return {
         id: id,
@@ -543,6 +743,8 @@ export const createElement = ({
         x2,
         y2,
         color: elementColor,
+        currentSlideId,
+        currentSlide,
       };
 
     case toolTypes.HEART:
@@ -554,6 +756,8 @@ export const createElement = ({
         color,
         filling: fill,
         fillStylee: fillColorStyle,
+        currentSlideId,
+        currentSlide,
       });
       return {
         id: id,
@@ -564,6 +768,8 @@ export const createElement = ({
         x2,
         y2,
         color: elementColor,
+        currentSlideId,
+        currentSlide,
       };
 
     case toolTypes.CLOUD:
@@ -575,6 +781,8 @@ export const createElement = ({
         color,
         filling: fill,
         fillStylee: fillColorStyle,
+        currentSlideId,
+        currentSlide,
       });
       return {
         id: id,
@@ -585,6 +793,8 @@ export const createElement = ({
         x2,
         y2,
         color: elementColor,
+        currentSlideId,
+        currentSlide,
       };
 
     case toolTypes.PENCIL:
@@ -593,7 +803,9 @@ export const createElement = ({
         type: toolType,
         points: [{ x: x1, y: y1 }],
         color: elementColor,
-        strokeWidth: strokeW || 3, // Use strokeW parameter or default to 3
+        strokeWidth: strokeW || 3, // Use strokeW parameter or default to 3,
+        currentSlideId,
+        currentSlide,
       };
 
     case toolTypes.IMAGE:
@@ -609,6 +821,8 @@ export const createElement = ({
         color: elementColor,
         width: Math.abs(x2 - x1) || 200,
         height: Math.abs(y2 - y1) || 200,
+        currentSlideId,
+        currentSlide,
       };
 
       console.log("Created image element:", element);
@@ -624,6 +838,8 @@ export const createElement = ({
         y2,
         text: text || "",
         color: elementColor,
+        currentSlideId,
+        currentSlide,
       };
 
     default:

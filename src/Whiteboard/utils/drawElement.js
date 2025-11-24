@@ -60,6 +60,8 @@ const drawTextElement = (context, element, wordsPerLine = 15) => {
     context.fillText(line, element.x1, element.y1 + index * lineHeight);
   });
 
+  console.log(`\n\n\n\nfjkasdsakjdasd \n\n\n rendered text\n\n\n${words}\n\n\n`)
+
   // Restore the context state
   context.restore();
 };
@@ -194,6 +196,7 @@ export const drawElement = ({ roughCanvas, context, element }) => {
     case "cloud":
       // Check if roughElement exists
       if (element.roughElement) {
+        // console.log(`\n\n\ndrawing elelment: ${JSON.stringify(element.roughElement)} \n\n\n`)
         return roughCanvas.draw(element.roughElement);
       } else {
         console.warn("Missing roughElement for shape:", element);

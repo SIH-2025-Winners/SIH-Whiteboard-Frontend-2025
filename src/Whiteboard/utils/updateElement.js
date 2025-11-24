@@ -2,12 +2,14 @@ import { createElement } from ".";
 import { toolTypes } from "../../constants";
 import { emitElementUpdate } from "../../socketConn/socketConn";
 import { store } from "../../store/store";
-import { setElements } from "../whiteboardSlice";
+import { updateElementInStore } from "../whiteboardSlice";
 
 export const updatePencilElementWhenMoving = (
   { index, newPoints, color }, // Add color parameter
   elements,
-  roomID // ✅ Add roomID parameter
+  roomID, // ✅ Add roomID parameter
+  currentSlideId,
+  currentSlide
 ) => {
   const elementsCopy = [...elements];
 
@@ -21,16 +23,23 @@ export const updatePencilElementWhenMoving = (
 
   const updatedPencilElement = elementsCopy[index];
 
-  store.dispatch(setElements(elementsCopy));
-  emitElementUpdate(updatedPencilElement, roomID); // ✅ Pass roomID
+  store.dispatch(
+    updateElementInStore({
+      elementData: updatedPencilElement,
+      slideId: currentSlideId,
+    })
+  );
+  emitElementUpdate(updatedPencilElement, roomID, currentSlideId, currentSlide); // ✅ Pass roomID
 };
 
 export const updateElement = (
   { id, x1, x2, y1, y2, type, index, text, src, color, fill, fillStyle },
   elements,
-  roomID
+  roomID,
+  currentSlideId,
+  currentSlide
 ) => {
-  console.log(`\n\n${src}\n\n`);
+  console.log(`\n\nFILL STYLE SANYAM :${fillStyle}\n\n`);
   const elementsCopy = [...elements];
 
   switch (type) {
@@ -55,14 +64,23 @@ export const updateElement = (
         color, // Include color when updating
         fill,
         fillColorStyle: fillStyle,
+        currentSlideId,
+        currentSlide,
       });
 
       elementsCopy[index] = updatedElement;
 
-      store.dispatch(setElements(elementsCopy));
+      store.dispatch(
+        updateElementInStore({
+          elementData: updatedElement,
+          slideId: currentSlideId,
+        })
+      );
 
-      emitElementUpdate(updatedElement, roomID);
+      emitElementUpdate(updatedElement, roomID, currentSlideId, currentSlide);
       break;
+
+
     case toolTypes.PENCIL:
       elementsCopy[index] = {
         ...elementsCopy[index],
@@ -78,9 +96,19 @@ export const updateElement = (
 
       const updatedPencilElement = elementsCopy[index];
 
-      store.dispatch(setElements(elementsCopy));
+      store.dispatch(
+        updateElementInStore({
+          elementData: updatedPencilElement,
+          slideId: currentSlideId,
+        })
+      );
 
-      emitElementUpdate(updatedPencilElement, roomID);
+      emitElementUpdate(
+        updatedPencilElement,
+        roomID,
+        currentSlideId,
+        currentSlide
+      );
       break;
     case toolTypes.TEXT:
       elementsCopy[index] = {
@@ -93,14 +121,26 @@ export const updateElement = (
           toolType: type,
           text,
           color, // Include color when updating
+          currentSlideId,
+          currentSlide,
         }),
       };
 
       const updatedTextElement = elementsCopy[index];
 
-      store.dispatch(setElements(elementsCopy));
+      store.dispatch(
+        updateElementInStore({
+          elementData: updatedTextElement,
+          slideId: currentSlideId,
+        })
+      );
 
-      emitElementUpdate(updatedTextElement, roomID);
+      emitElementUpdate(
+        updatedTextElement,
+        roomID,
+        currentSlideId,
+        currentSlide
+      );
       break;
     case toolTypes.IMAGE: {
       elementsCopy[index] = {
@@ -113,13 +153,20 @@ export const updateElement = (
           toolType: type,
           src: src,
           color, // Add color parameter
+          currentSlideId,
+          currentSlide,
         }),
       };
 
       const updatedImageElement = elementsCopy[index];
-      store.dispatch(setElements(elementsCopy));
+      store.dispatch(
+        updateElementInStore({
+          elementData: updatedImageElement,
+          slideId: currentSlideId,
+        })
+      );
       console.log("\n\nUPDATE ELEMET IMAGE CLSSED ");
-      emitElementUpdate(updatedImageElement, roomID); // This was missing roomID!
+      emitElementUpdate(updatedImageElement, roomID, currentSlideId, currentSlide); // This was missing roomID!
       break;
     }
 

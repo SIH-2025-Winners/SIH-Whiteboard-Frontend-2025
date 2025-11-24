@@ -1,21 +1,27 @@
-import React, { useEffect, useLayoutEffect, useRef, useState, useCallback } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { useDispatch, useSelector } from "react-redux";
 import rough from "roughjs/bundled/rough.esm";
 import { v4 as uuid } from "uuid";
 
 // Enhanced Components
-import TopToolbar from "../components/TopToolbar";
 import ChatSidebar from "../components/ChatSidebar";
 import ImageModal from "../components/ImageModal";
 import PollModal from "../components/PollModal";
 import ShapeDropdown from "../components/ShapeDropdown";
+import TopToolbar from "../components/TopToolbar";
 
 // Existing Components
 import CursorOverlay from "../CursorOverlay/CursorOverlay";
 import AiSearchPopup from "../components/AiSearchPopup";
 import PdfViewer from "../components/PdfViewer";
-import Menu from "./Menu";
 import WebsiteShareControl from "../components/WebsiteShareControl";
+import Menu from "./Menu";
 
 // Styles and Constants
 import { actions, cursorPositions, toolTypes } from "../constants";
@@ -28,12 +34,15 @@ import {
   emitFile,
   emitImageElement,
   emitMessages,
-  quiz,
+  emitRemoveCursor,
+  listenForCursorRemoval,
+  quiz
 } from "../socketConn/socketConn";
 import { clearFile } from "../store/fileSlice";
 import { store } from "../store/store";
 
 // Utils
+import { setFillMode, setFillStyle } from "../store/fillShape";
 import {
   adjustElementCoordinates,
   adjustmentRequired,
@@ -47,11 +56,9 @@ import {
 } from "./utils";
 import {
   setMessages,
-  setElements,
-  updateElement as updateElementInStore,
   setToolType,
+  updateElementInStore,
 } from "./whiteboardSlice";
-import { setFillMode, setFillStyle } from "../store/fillShape";
 
 let emitCursor = true;
 let lastCursorPosition;
@@ -59,7 +66,7 @@ let lastCursorPosition;
 const Whiteboard = ({ role, userID, roomID }) => {
   const canvasRef = useRef();
   const textAreaRef = useRef();
-  
+
   // Initialize global erased elements tracking for Redux integration
   useEffect(() => {
     if (!window.erasedElementsSet) {
@@ -67,8 +74,8 @@ const Whiteboard = ({ role, userID, roomID }) => {
       window.eraseTimeoutMap = new Map();
     }
   }, []);
-  
-  // Enhanced state management  
+
+  // Enhanced state management
   const [moveCanvas] = useState("");
   const [AISearchOpen, setAISearchOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -79,28 +86,39 @@ const Whiteboard = ({ role, userID, roomID }) => {
   const [action, setAction] = useState(null);
   const [selectedElement, setSelectedElement] = useState(null);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  
 
   const [resultPoll, setResultPoll] = useState("");
-  
+
   // Eraser state management
   const [eraserSize, setEraserSize] = useState(30);
   const [showEraserDropdown, setShowEraserDropdown] = useState(false);
-  const [eraserDropdownPosition, setEraserDropdownPosition] = useState({ x: 0, y: 0 });
-  
+  const [eraserDropdownPosition, setEraserDropdownPosition] = useState({
+    x: 0,
+    y: 0,
+  });
+
   // Pencil state management
   const [pencilSize, setPencilSize] = useState(3);
   const [showPencilDropdown, setShowPencilDropdown] = useState(false);
-  const [pencilDropdownPosition, setPencilDropdownPosition] = useState({ x: 0, y: 0 });
-  
+  const [pencilDropdownPosition, setPencilDropdownPosition] = useState({
+    x: 0,
+    y: 0,
+  });
+
   // Fill dropdown state management
   const [showFillDropdown, setShowFillDropdown] = useState(false);
-  const [fillDropdownPosition, setFillDropdownPosition] = useState({ x: 0, y: 0 });
-  
+  const [fillDropdownPosition, setFillDropdownPosition] = useState({
+    x: 0,
+    y: 0,
+  });
+
   // Shape dropdown state management
   const [showShapeDropdown, setShowShapeDropdown] = useState(false);
-  const [shapeDropdownPosition, setShapeDropdownPosition] = useState({ x: 0, y: 0 });
-  
+  const [shapeDropdownPosition, setShapeDropdownPosition] = useState({
+    x: 0,
+    y: 0,
+  });
+
   // Touch/Mouse conflict prevention
   const [lastTouchTime, setLastTouchTime] = useState(0);
 
@@ -113,35 +131,51 @@ const Whiteboard = ({ role, userID, roomID }) => {
   const file = useSelector((state) => state.file.file);
   const toolType = useSelector((state) => state.whiteboard.tool);
   const selectedColor = useSelector((state) => state.whiteboard.selectedColor);
-  const elements = useSelector((state) => state.whiteboard.elements);
+  // const elements = useSelector((state) => state.whiteboard.elements);
   const messages = useSelector((state) => state.whiteboard.messages);
   const pollData = useSelector((state) => state.whiteboard.pollData);
   const fillShape = useSelector((state) => state.fillShape.filling);
   const fillStylee = useSelector((state) => state.fillShape.fillStyle);
   const websiteUrl = useSelector((state) => state.website.websiteUrl);
   const isDarkTheme = useSelector((state) => state.whiteboard.isDarkTheme);
-  
+
+  const { slides, currentSlide } = useSelector((state) => state.whiteboard);
+
+  // Get current slide safely
+  const slide = slides?.[currentSlide];
+
+  // Extract elements safely
+  const elements = slide?.elements || [];
+  const currentSlideId = slide?.id;
+
+  console.log(`\n\n\n\n\n\n\nelements : ${currentSlide}\n\n\n\n\n\n\n`);
+
   const [openImageModel, setOpenImageModel] = useState();
   const [imageUrl, setImageUrl] = useState();
   const [pdfUrl, setPdfUrl] = useState(null);
   const [showPdfViewer, setShowPdfViewer] = useState(false);
-  
+
   // Set pencil as default tool for teachers
   useEffect(() => {
     if (role === "teacher" && !toolType) {
       dispatch(setToolType(toolTypes.PENCIL));
     }
   }, [role, toolType, dispatch]);
-  
-      // Auto-open poll modal for students when poll data is received
+
+  // Auto-open poll modal for students when poll data is received
   useEffect(() => {
-    if (role === 'student' && pollData && !openPollModal && !pollManuallyClosed) {
+    if (
+      role === "student" &&
+      pollData &&
+      !openPollModal &&
+      !pollManuallyClosed
+    ) {
       setOpenPollModal(true);
       // Reset manually closed flag when new poll arrives
       setPollManuallyClosed(false);
     }
   }, [pollData, role, openPollModal, pollManuallyClosed]);
-  
+
   // Set cursor emit permissions
   if (role === "teacher") {
     emitCursor = true;
@@ -151,12 +185,10 @@ const Whiteboard = ({ role, userID, roomID }) => {
 
   // Removed old poll variables - using PollModal system only
 
-
   console.log(`\n\n${fillStylee}\n\n`);
 
   // Select audio-related state from Redux
   // eslint-disable-next-line
-
 
   useEffect(() => {
     if (websiteUrl) {
@@ -164,18 +196,12 @@ const Whiteboard = ({ role, userID, roomID }) => {
     }
   }, [websiteUrl]);
 
-
-
   useEffect(() => {
     console.log("Elements array updated:", {
       count: elements.length,
       elementIds: elements.map((el) => ({ id: el.id, type: el.type })),
     });
-  }, [elements]);
-
-
-
-
+  }, [elements, slides, currentSlide]);
 
   useEffect(() => {
     if (!file) {
@@ -205,7 +231,7 @@ const Whiteboard = ({ role, userID, roomID }) => {
       console.log("✅ PDF detected - setting up for viewing");
       setPdfUrl(fileData);
       // For students, don't auto-open, show button instead
-      if (role === 'student') {
+      if (role === "student") {
         setShowPdfViewer(true);
       } else {
         setShowPdf(true);
@@ -255,7 +281,17 @@ const Whiteboard = ({ role, userID, roomID }) => {
     elements.forEach((element) => {
       drawElement({ roughCanvas, context: ctx, element });
     });
-  }, [elements, isDarkTheme]);
+  }, [elements, slides, currentSlide, currentSlideId, isDarkTheme]);
+
+  useLayoutEffect(() => {
+    // Remove stale cursor on mount
+    emitRemoveCursor({ roomID, userId: userID });
+
+    // Listen for removal events from server
+    listenForCursorRemoval();
+
+  
+  }, []);
 
   useEffect(() => {
     const handleImageLoaded = () => {
@@ -263,7 +299,7 @@ const Whiteboard = ({ role, userID, roomID }) => {
       const canvas = canvasRef.current;
       if (canvas) {
         const ctx = canvas.getContext("2d");
-        
+
         // Apply theme-based background
         if (isDarkTheme) {
           ctx.fillStyle = "#1f2937";
@@ -293,14 +329,10 @@ const Whiteboard = ({ role, userID, roomID }) => {
     };
   }, [elements, isDarkTheme]);
 
-
-
   // Simple eraser: works like pencil but with background color
   const startErasing = (x, y) => {
-    // Get background color based on theme (match the canvas background exactly)
-    const backgroundColor = isDarkTheme ? '#1f2937' : '#ffffff';
-    
-    // Create eraser element (pencil with background color)
+    const backgroundColor = isDarkTheme ? "#1f2937" : "#ffffff";
+
     const eraserElement = {
       id: uuid(),
       x1: x,
@@ -310,23 +342,27 @@ const Whiteboard = ({ role, userID, roomID }) => {
       type: toolTypes.PENCIL,
       points: [{ x, y }],
       color: backgroundColor,
-      strokeWidth: eraserSize, // Use eraser size as stroke width
+      strokeWidth: eraserSize,
+      currentSlide,
+      currentSlideId,
     };
-    
-    // Add to elements and set as selected
-    const updatedElements = [...elements, eraserElement];
-    dispatch(setElements(updatedElements));
+
+    dispatch(
+      updateElementInStore({
+        elementData: eraserElement,
+        slideId: currentSlideId,
+      })
+    );
+
     setSelectedElement(eraserElement);
     setAction(actions.DRAWING);
   };
 
-
-  
   // Custom cursor icons
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    
+
     if (toolType === toolTypes.ERASER) {
       // Create black and white eraser icon cursor
       const svg = `
@@ -349,10 +385,10 @@ const Whiteboard = ({ role, userID, roomID }) => {
       const encodedSvg = encodeURIComponent(svg);
       canvas.style.cursor = `url('data:image/svg+xml;utf8,${encodedSvg}') 2 22, auto`;
     } else {
-      canvas.style.cursor = 'default';
+      canvas.style.cursor = "default";
     }
   }, [toolType]);
-  
+
   // Handle click outside to close dropdowns
   useEffect(() => {
     const handleClickOutside = () => {
@@ -362,25 +398,35 @@ const Whiteboard = ({ role, userID, roomID }) => {
       setShowShapeDropdown(false);
     };
 
-    if (showEraserDropdown || showPencilDropdown || showFillDropdown || showShapeDropdown) {
+    if (
+      showEraserDropdown ||
+      showPencilDropdown ||
+      showFillDropdown ||
+      showShapeDropdown
+    ) {
       // Add a small delay to prevent immediate closure when opening
       const timeoutId = setTimeout(() => {
-        document.addEventListener('click', handleClickOutside);
+        document.addEventListener("click", handleClickOutside);
       }, 100);
-      
+
       return () => {
         clearTimeout(timeoutId);
-        document.removeEventListener('click', handleClickOutside);
+        document.removeEventListener("click", handleClickOutside);
       };
     }
-  }, [showEraserDropdown, showPencilDropdown, showFillDropdown, showShapeDropdown]);
+  }, [
+    showEraserDropdown,
+    showPencilDropdown,
+    showFillDropdown,
+    showShapeDropdown,
+  ]);
 
   // Handle eraser dropdown opening from toolbar
   const handleEraserDropdown = (position) => {
     setEraserDropdownPosition(position);
     setShowEraserDropdown(true);
   };
-  
+
   // Handle pencil dropdown opening from toolbar
   const handlePencilDropdown = (position) => {
     setPencilDropdownPosition(position);
@@ -390,7 +436,7 @@ const Whiteboard = ({ role, userID, roomID }) => {
     setShowFillDropdown(false);
     setShowShapeDropdown(false);
   };
-  
+
   // Handle fill dropdown opening from toolbar
   const handleFillDropdown = (position) => {
     setFillDropdownPosition(position);
@@ -400,7 +446,7 @@ const Whiteboard = ({ role, userID, roomID }) => {
     setShowPencilDropdown(false);
     setShowShapeDropdown(false);
   };
-  
+
   // Handle shape dropdown opening from toolbar
   const handleShapeDropdown = (position) => {
     setShapeDropdownPosition(position);
@@ -411,8 +457,6 @@ const Whiteboard = ({ role, userID, roomID }) => {
     setShowFillDropdown(false);
   };
 
-
-  
   // Clear erased element tracking when whiteboard is cleared
   useEffect(() => {
     if (elements.length === 0 && window.erasedElementsSet) {
@@ -422,10 +466,12 @@ const Whiteboard = ({ role, userID, roomID }) => {
       });
       window.eraseTimeoutMap.clear();
       window.erasedElementsSet.clear();
-      console.log('Cleared all erased element tracking due to whiteboard clear');
+      console.log(
+        "Cleared all erased element tracking due to whiteboard clear"
+      );
     }
   }, [elements.length]);
-  
+
   // Cleanup effect for eraser timeouts
   useEffect(() => {
     return () => {
@@ -446,28 +492,29 @@ const Whiteboard = ({ role, userID, roomID }) => {
   const saveState = useCallback(() => {
     // Create a deep copy of current elements
     const currentState = JSON.parse(JSON.stringify(elements));
-    
+
     // Remove any future history if we're in the middle of history
     const newHistory = history.slice(0, currentHistoryIndex + 1);
-    
+
     // Add new state to history
     newHistory.push(currentState);
-    
+
     // Limit history to last 50 states to prevent memory issues
     if (newHistory.length > 50) {
       newHistory.shift();
     } else {
       setCurrentHistoryIndex(currentHistoryIndex + 1);
     }
-    
+
     setHistory(newHistory);
   }, [elements, history, currentHistoryIndex]);
 
+  const handleTouchMove = () => {};
   const undo = useCallback(() => {
     if (currentHistoryIndex > 0) {
       const newIndex = currentHistoryIndex - 1;
       setCurrentHistoryIndex(newIndex);
-      dispatch(setElements(history[newIndex]));
+      // dispatch(setElements(history[newIndex]));
     }
   }, [currentHistoryIndex, history, dispatch]);
 
@@ -475,17 +522,21 @@ const Whiteboard = ({ role, userID, roomID }) => {
     if (currentHistoryIndex < history.length - 1) {
       const newIndex = currentHistoryIndex + 1;
       setCurrentHistoryIndex(newIndex);
-      dispatch(setElements(history[newIndex]));
+      // dispatch(setElements(history[newIndex]));
     }
   }, [currentHistoryIndex, history, dispatch]);
 
   // Initialize history with first empty state
   useEffect(() => {
-    if (history.length === 1 && history[0].length === 0 && elements.length === 0) {
+    if (
+      history.length === 1 &&
+      history[0].length === 0 &&
+      elements.length === 0
+    ) {
       // History is already initialized with empty state
       return;
     }
-    
+
     // If elements changed externally (like from socket), update history
     if (elements.length === 0 && history[currentHistoryIndex]?.length > 0) {
       // Elements were cleared, save this state
@@ -497,18 +548,25 @@ const Whiteboard = ({ role, userID, roomID }) => {
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (role !== "teacher") return; // Only teachers can undo/redo
-      
-      if ((event.ctrlKey || event.metaKey) && event.key === 'z' && !event.shiftKey) {
+
+      if (
+        (event.ctrlKey || event.metaKey) &&
+        event.key === "z" &&
+        !event.shiftKey
+      ) {
         event.preventDefault();
         undo();
-      } else if ((event.ctrlKey || event.metaKey) && (event.key === 'y' || (event.key === 'z' && event.shiftKey))) {
+      } else if (
+        (event.ctrlKey || event.metaKey) &&
+        (event.key === "y" || (event.key === "z" && event.shiftKey))
+      ) {
         event.preventDefault();
         redo();
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [role, undo, redo]);
 
   // Update your handleMouseDown function
@@ -524,6 +582,8 @@ const Whiteboard = ({ role, userID, roomID }) => {
     if (selectedElement && action === actions.WRITING) {
       return;
     }
+
+    const slideId = currentSlideId;
 
     console.log(`${fillStylee}`);
 
@@ -551,11 +611,22 @@ const Whiteboard = ({ role, userID, roomID }) => {
           fill: fillShape,
           fillColorStyle: fillStylee,
           strokeW: toolType === toolTypes.PENCIL ? pencilSize : 2,
+          currentSlideId,
+          currentSlide,
         });
 
         setAction(actions.DRAWING);
         setSelectedElement(element);
-        dispatch(updateElementInStore(element));
+        // console.log(`\n\n\nsetSelectedElement: ${selectedElement}\n\n\n\nelement: ${JSON.stringify(element)}\n\n\n\n`)
+
+        //  elementData, slideId
+
+        dispatch(
+          updateElementInStore({
+            elementData: element,
+            slideId,
+          })
+        );
         break;
       }
 
@@ -568,11 +639,18 @@ const Whiteboard = ({ role, userID, roomID }) => {
           toolType,
           id: uuid(),
           color: selectedColor,
+          currentSlideId,
+          currentSlide,
         });
 
         setAction(actions.WRITING);
         setSelectedElement(element);
-        dispatch(updateElementInStore(element));
+        dispatch(
+          updateElementInStore({
+            elementData: element,
+            slideId,
+          })
+        );
         break;
       }
 
@@ -621,7 +699,25 @@ const Whiteboard = ({ role, userID, roomID }) => {
           const offsetX = clientX - element.x1;
           const offsetY = clientY - element.y1;
 
-          setSelectedElement({ ...element, offsetX, offsetY });
+          setSelectedElement({
+            ...element,
+            offsetX,
+            offsetY,
+            fillColorStyle:
+              element.fillColorStyle ||
+              element.roughElement?.options?.fill ||
+              false,
+            fill:
+              element.fill !== undefined
+                ? element.fill
+                : element.roughElement?.options?.fill || false,
+          });
+
+          console.log(
+            `\n\n\nsetSelectedElement: ${selectedElement}\n\n\n\nelement: ${JSON.stringify(
+              element
+            )}\n\n\n\n`
+          );
         }
 
         if (element && element.type === toolTypes.PENCIL) {
@@ -656,29 +752,42 @@ const Whiteboard = ({ role, userID, roomID }) => {
 
     if (emitCursor) {
       emitCursorPosition({
-        cursorData: { x: clientX, y: clientY },
+        cursorData: { x: clientX, y: clientY, userId: userID },
         roomID: roomID,
       });
 
       setTimeout(() => {
         emitCursor = true;
         emitCursorPosition(lastCursorPosition);
-      }, [80]);
+      }, [10]);
     }
 
     // Handle eraser drawing (like pencil but with background color)
-    if (toolType === toolTypes.ERASER && action === actions.DRAWING && selectedElement) {
+    if (
+      toolType === toolTypes.ERASER &&
+      action === actions.DRAWING &&
+      selectedElement
+    ) {
       // Update eraser stroke just like pencil
       const newPoints = [...selectedElement.points, { x: clientX, y: clientY }];
       const elementsCopy = [...elements];
-      const index = elementsCopy.findIndex(el => el.id === selectedElement.id);
-      
+      const index = elementsCopy.findIndex(
+        (el) => el.id === selectedElement.id
+      );
+
       if (index !== -1) {
         elementsCopy[index] = {
           ...selectedElement,
           points: newPoints,
+          currentSlideId,
+          currentSlide,
         };
-        dispatch(setElements(elementsCopy));
+        dispatch(
+          updateElementInStore({
+            elementData: elementsCopy[index],
+            slideId: currentSlideId,
+          })
+        );
         setSelectedElement({ ...selectedElement, points: newPoints });
       }
     }
@@ -710,7 +819,9 @@ const Whiteboard = ({ role, userID, roomID }) => {
             fillStyle: fillStylee,
           },
           elements,
-          roomID
+          roomID,
+          currentSlideId,
+          currentSlide
         );
       }
     }
@@ -746,15 +857,30 @@ const Whiteboard = ({ role, userID, roomID }) => {
               color: selectedElement.color,
             },
             elements,
-            roomID // ✅ Pass roomID here
+            roomID, // ✅ Pass roomID here
+            currentSlideId,
+            currentSlide
           );
         }
         return;
       }
 
       // Handle other element types movement
-      const { id, x1, x2, y1, y2, src, type, offsetX, offsetY, text, color } =
-        selectedElement;
+      const {
+        id,
+        x1,
+        x2,
+        y1,
+        y2,
+        src,
+        type,
+        offsetX,
+        offsetY,
+        text,
+        color,
+        fill,
+        fillColorStyle,
+      } = selectedElement;
       console.log(
         `\n\nSELECTED ELEMENT DHASV: \n\n ${JSON.stringify(
           selectedElement
@@ -782,9 +908,13 @@ const Whiteboard = ({ role, userID, roomID }) => {
             src: src,
             text,
             color,
+            fill: selectedElement.fill,
+            fillStyle: selectedElement.fillColorStyle, // ✅ must exist // ✅ must match createElement
           },
           elements,
-          roomID
+          roomID,
+          currentSlideId,
+          currentSlide
         );
       }
     }
@@ -796,8 +926,16 @@ const Whiteboard = ({ role, userID, roomID }) => {
       selectedElement
     ) {
       console.log(`\n\n\ndsadsaadsada ${JSON.stringify(selectedElement)} \n\n`);
-      const { id, type, position, src, color, ...coordinates } =
-        selectedElement;
+      const {
+        id,
+        type,
+        position,
+        fill,
+        fillColorStyle,
+        src,
+        color,
+        ...coordinates
+      } = selectedElement;
       // console.log(`\n\n\ndsadsaadsada ${src} \n\n`);
 
       const { x1, y1, x2, y2 } = getResizedCoordinates(
@@ -823,9 +961,13 @@ const Whiteboard = ({ role, userID, roomID }) => {
             id: selectedElement.id,
             index: selectedElementIndex,
             color: selectedElement.color,
+            fill: fill,
+            fillStyle: fillColorStyle,
           },
           elements,
-          roomID
+          roomID,
+          currentSlideId,
+          currentSlide
         );
       }
     }
@@ -883,10 +1025,12 @@ const Whiteboard = ({ role, userID, roomID }) => {
               type: elements[selectedElementIndex].type,
               color: currentColor,
               fill: fillShape,
-              fillStyle: fillStylee,
+              fillStyle: selectedElement.fillColorStyle,
             },
             elements,
-            roomID
+            roomID,
+            currentSlideId,
+            currentSlide
           );
         }
       }
@@ -906,16 +1050,16 @@ const Whiteboard = ({ role, userID, roomID }) => {
   const handleTouchStart = (event) => {
     event.preventDefault(); // Prevent scrolling/zooming
     if (event.touches.length !== 1) return; // Only handle single touch
-    
+
     // Set timestamp to prevent mouse event conflicts
     setLastTouchTime(Date.now());
-    
+
     const touch = event.touches[0];
     const mouseEvent = {
       clientX: touch.clientX,
       clientY: touch.clientY,
     };
-    
+
     // Call the original mouse handler logic directly (bypassing timestamp check)
     const { clientX, clientY } = mouseEvent;
     const adjustedY = clientY;
@@ -1035,192 +1179,198 @@ const Whiteboard = ({ role, userID, roomID }) => {
     }
   };
 
-  const handleTouchMove = (event) => {
-    event.preventDefault(); // Prevent scrolling/zooming
-    if (event.touches.length !== 1) return; // Only handle single touch
-    
-    // Update touch timestamp
-    setLastTouchTime(Date.now());
-    
-    const touch = event.touches[0];
-    const { clientX, clientY } = touch;
+  // const handleTouchMove = (event) => {
+  //   event.preventDefault(); // Prevent scrolling/zooming
+  //   if (event.touches.length !== 1) return; // Only handle single touch
 
-    // Handle touch move logic directly (bypassing timestamp check)
-    lastCursorPosition = {
-      cursorData: { x: clientX, y: clientY },
-      roomID: roomID,
-    };
+  //   // Update touch timestamp
+  //   setLastTouchTime(Date.now());
 
-    if (emitCursor) {
-      emitCursorPosition({
-        cursorData: { x: clientX, y: clientY },
-        roomID: roomID,
-      });
+  //   const touch = event.touches[0];
+  //   const { clientX, clientY } = touch;
 
-      setTimeout(() => {
-        emitCursor = true;
-        emitCursorPosition(lastCursorPosition);
-      }, [80]);
-    }
+  //   // Handle touch move logic directly (bypassing timestamp check)
+  //   lastCursorPosition = {
+  //     cursorData: { x: clientX, y: clientY },
+  //     roomID: roomID,
+  //   };
 
-    // Handle eraser drawing (like pencil but with background color)
-    if (toolType === toolTypes.ERASER && action === actions.DRAWING && selectedElement) {
-      // Update eraser stroke just like pencil
-      const newPoints = [...selectedElement.points, { x: clientX, y: clientY }];
-      const elementsCopy = [...elements];
-      const index = elementsCopy.findIndex(el => el.id === selectedElement.id);
-      
-      if (index !== -1) {
-        elementsCopy[index] = {
-          ...selectedElement,
-          points: newPoints,
-        };
-        dispatch(setElements(elementsCopy));
-        setSelectedElement({ ...selectedElement, points: newPoints });
-      }
-    }
+  //   if (emitCursor) {
+  //     emitCursorPosition({
+  //       cursorData: { x: clientX, y: clientY },
+  //       roomID: roomID,
+  //     });
 
-    // Handle drawing new elements
-    if (action === actions.DRAWING && selectedElement) {
-      const index = elements.findIndex((el) => el.id === selectedElement.id);
+  //     setTimeout(() => {
+  //       emitCursor = true;
+  //       emitCursorPosition(lastCursorPosition);
+  //     }, [80]);
+  //   }
 
-      if (index !== -1) {
-        const elementColor =
-          elements[index].color ||
-          selectedElement.color ||
-          store.getState().whiteboard.selectedColor ||
-          "#000000";
+  //   // Handle eraser drawing (like pencil but with background color)
+  //   if (
+  //     toolType === toolTypes.ERASER &&
+  //     action === actions.DRAWING &&
+  //     selectedElement
+  //   ) {
+  //     // Update eraser stroke just like pencil
+  //     const newPoints = [...selectedElement.points, { x: clientX, y: clientY }];
+  //     const elementsCopy = [...elements];
+  //     const index = elementsCopy.findIndex(
+  //       (el) => el.id === selectedElement.id
+  //     );
 
-        updateElement(
-          {
-            index,
-            id: elements[index].id,
-            x1: elements[index].x1,
-            y1: elements[index].y1,
-            x2: clientX,
-            y2: clientY,
-            type: elements[index].type,
-            color: elementColor,
-            fill: fillShape,
-            fillStyle: fillStylee,
-          },
-          elements,
-          roomID
-        );
-      }
-    }
+  //     if (index !== -1) {
+  //       elementsCopy[index] = {
+  //         ...selectedElement,
+  //         points: newPoints,
+  //       };
+  //       dispatch(setElements(elementsCopy));
+  //       setSelectedElement({ ...selectedElement, points: newPoints });
+  //     }
+  //   }
 
-    // Handle selection tool cursor changes
-    if (toolType === toolTypes.SELECTION) {
-      // Note: Can't set cursor style on touch devices, so skipping element position check
-    }
+  //   // Handle drawing new elements
+  //   if (action === actions.DRAWING && selectedElement) {
+  //     const index = elements.findIndex((el) => el.id === selectedElement.id);
 
-    // Handle moving elements
-    if (
-      toolType === toolTypes.SELECTION &&
-      action === actions.MOVING &&
-      selectedElement
-    ) {
-      // Handle pencil movement
-      if (selectedElement.type === toolTypes.PENCIL) {
-        const newPoints = selectedElement.points.map((_, index) => ({
-          x: clientX - selectedElement.xOffsets[index],
-          y: clientY - selectedElement.yOffsets[index],
-        }));
+  //     if (index !== -1) {
+  //       const elementColor =
+  //         elements[index].color ||
+  //         selectedElement.color ||
+  //         store.getState().whiteboard.selectedColor ||
+  //         "#000000";
 
-        const index = elements.findIndex((el) => el.id === selectedElement.id);
-        if (index !== -1) {
-          updatePencilElementWhenMoving(
-            {
-              index,
-              newPoints,
-              color: selectedElement.color,
-            },
-            elements,
-            roomID
-          );
-        }
-        return;
-      }
+  //       updateElement(
+  //         {
+  //           index,
+  //           id: elements[index].id,
+  //           x1: elements[index].x1,
+  //           y1: elements[index].y1,
+  //           x2: clientX,
+  //           y2: clientY,
+  //           type: elements[index].type,
+  //           color: elementColor,
+  //           fill: fillShape,
+  //           fillStyle: fillStylee,
+  //         },
+  //         elements,
+  //         roomID
+  //       );
+  //     }
+  //   }
 
-      // Handle other element types movement
-      const { id, x1, x2, y1, y2, src, type, offsetX, offsetY, text, color } =
-        selectedElement;
+  //   // Handle selection tool cursor changes
+  //   if (toolType === toolTypes.SELECTION) {
+  //     // Note: Can't set cursor style on touch devices, so skipping element position check
+  //   }
 
-      const width = x2 - x1;
-      const height = y2 - y1;
+  //   // Handle moving elements
+  //   if (
+  //     toolType === toolTypes.SELECTION &&
+  //     action === actions.MOVING &&
+  //     selectedElement
+  //   ) {
+  //     // Handle pencil movement
+  //     if (selectedElement.type === toolTypes.PENCIL) {
+  //       const newPoints = selectedElement.points.map((_, index) => ({
+  //         x: clientX - selectedElement.xOffsets[index],
+  //         y: clientY - selectedElement.yOffsets[index],
+  //       }));
 
-      const newX1 = clientX - offsetX;
-      const newY1 = clientY - offsetY;
+  //       const index = elements.findIndex((el) => el.id === selectedElement.id);
+  //       if (index !== -1) {
+  //         updatePencilElementWhenMoving(
+  //           {
+  //             index,
+  //             newPoints,
+  //             color: selectedElement.color,
+  //           },
+  //           elements,
+  //           roomID
+  //         );
+  //       }
+  //       return;
+  //     }
 
-      const index = elements.findIndex((el) => el.id === selectedElement.id);
+  //     // Handle other element types movement
+  //     const { id, x1, x2, y1, y2, src, type, offsetX, offsetY, text, color } =
+  //       selectedElement;
 
-      if (index !== -1) {
-        updateElement(
-          {
-            id,
-            x1: newX1,
-            y1: newY1,
-            x2: newX1 + width,
-            y2: newY1 + height,
-            type,
-            index,
-            src: src,
-            text,
-            color,
-          },
-          elements,
-          roomID
-        );
-      }
-    }
+  //     const width = x2 - x1;
+  //     const height = y2 - y1;
 
-    // Handle resizing elements
-    if (
-      toolType === toolTypes.SELECTION &&
-      action === actions.RESIZING &&
-      selectedElement
-    ) {
-      const { id, type, position, src, color, ...coordinates } =
-        selectedElement;
+  //     const newX1 = clientX - offsetX;
+  //     const newY1 = clientY - offsetY;
 
-      const { x1, y1, x2, y2 } = getResizedCoordinates(
-        clientX,
-        clientY,
-        position,
-        coordinates
-      );
+  //     const index = elements.findIndex((el) => el.id === selectedElement.id);
 
-      const selectedElementIndex = elements.findIndex(
-        (el) => el.id === selectedElement.id
-      );
+  //     if (index !== -1) {
+  //       updateElement(
+  //         {
+  //           id,
+  //           x1: newX1,
+  //           y1: newY1,
+  //           x2: newX1 + width,
+  //           y2: newY1 + height,
+  //           type,
+  //           index,
+  //           src: src,
+  //           text,
+  //           color,
+  //         },
+  //         elements,
+  //         roomID
+  //       );
+  //     }
+  //   }
 
-      if (selectedElementIndex !== -1) {
-        updateElement(
-          {
-            x1,
-            x2,
-            y1,
-            y2,
-            src,
-            type: selectedElement.type,
-            id: selectedElement.id,
-            index: selectedElementIndex,
-            color: selectedElement.color,
-          },
-          elements,
-          roomID
-        );
-      }
-    }
-  };
+  //   // Handle resizing elements
+  //   if (
+  //     toolType === toolTypes.SELECTION &&
+  //     action === actions.RESIZING &&
+  //     selectedElement
+  //   ) {
+  //     const { id, type, position, src, color, ...coordinates } =
+  //       selectedElement;
+
+  //     const { x1, y1, x2, y2 } = getResizedCoordinates(
+  //       clientX,
+  //       clientY,
+  //       position,
+  //       coordinates
+  //     );
+
+  //     const selectedElementIndex = elements.findIndex(
+  //       (el) => el.id === selectedElement.id
+  //     );
+
+  //     if (selectedElementIndex !== -1) {
+  //       updateElement(
+  //         {
+  //           x1,
+  //           x2,
+  //           y1,
+  //           y2,
+  //           src,
+  //           type: selectedElement.type,
+  //           id: selectedElement.id,
+  //           index: selectedElementIndex,
+  //           color: selectedElement.color,
+  //         },
+  //         elements,
+  //         roomID
+  //       );
+  //     }
+  //   }
+  // };
 
   const handleTouchEnd = (event) => {
     event.preventDefault(); // Prevent scrolling/zooming
-    
+
     // Update touch timestamp
     setLastTouchTime(Date.now());
-    
+
     // Handle touch end logic directly (bypassing timestamp check)
     console.log(
       "Touch end called, action:",
@@ -1296,15 +1446,15 @@ const Whiteboard = ({ role, userID, roomID }) => {
       updateElement(
         { id, x1, y1, type, text: event.target.value, index },
         elements,
-        roomID
+        roomID,
+        currentSlideId,
+        currentSlide
       );
 
       setAction(null);
       setSelectedElement(null);
     }
   };
-
-
 
   // Removed old poll system - now using PollModal only
 
@@ -1402,6 +1552,8 @@ const Whiteboard = ({ role, userID, roomID }) => {
         id: uuid(),
         src: imageUrl,
         color: selectedColor,
+        currentSlideId,
+        currentSlide,
       });
 
       // Set correct dimensions
@@ -1410,10 +1562,15 @@ const Whiteboard = ({ role, userID, roomID }) => {
 
       // Update local state
       setSelectedElement(element);
-      dispatch(updateElementInStore(element));
+      dispatch(
+        updateElementInStore({
+          elementData: element, // 🔹 must be object
+          slideId: currentSlideId,
+        })
+      );
 
       // Emit to other users
-      emitImageElement(element, roomID);
+      emitImageElement(element, roomID, currentSlideId, currentSlide);
 
       // Close modal
       setOpenImageModel(false);
@@ -1430,8 +1587,8 @@ const Whiteboard = ({ role, userID, roomID }) => {
   return (
     <div>
       {/* Top Toolbar for enhanced navigation */}
-      <TopToolbar 
-        role={role} 
+      <TopToolbar
+        role={role}
         userID={userID}
         roomID={roomID}
         onChatToggle={() => setIsChatOpen(!isChatOpen)}
@@ -1475,7 +1632,10 @@ const Whiteboard = ({ role, userID, roomID }) => {
               fontSize: "18px",
               fontWeight: "bold",
               transition: "all 0.2s ease",
-              boxShadow: currentHistoryIndex <= 0 ? "none" : "0 2px 4px rgba(99, 102, 241, 0.2)",
+              boxShadow:
+                currentHistoryIndex <= 0
+                  ? "none"
+                  : "0 2px 4px rgba(99, 102, 241, 0.2)",
             }}
             onMouseEnter={(e) => {
               if (currentHistoryIndex > 0) {
@@ -1502,16 +1662,28 @@ const Whiteboard = ({ role, userID, roomID }) => {
               height: "40px",
               border: "none",
               borderRadius: "8px",
-              backgroundColor: currentHistoryIndex >= history.length - 1 ? "#f3f4f6" : "#6366f1",
-              color: currentHistoryIndex >= history.length - 1 ? "#9ca3af" : "#ffffff",
-              cursor: currentHistoryIndex >= history.length - 1 ? "not-allowed" : "pointer",
+              backgroundColor:
+                currentHistoryIndex >= history.length - 1
+                  ? "#f3f4f6"
+                  : "#6366f1",
+              color:
+                currentHistoryIndex >= history.length - 1
+                  ? "#9ca3af"
+                  : "#ffffff",
+              cursor:
+                currentHistoryIndex >= history.length - 1
+                  ? "not-allowed"
+                  : "pointer",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               fontSize: "18px",
               fontWeight: "bold",
               transition: "all 0.2s ease",
-              boxShadow: currentHistoryIndex >= history.length - 1 ? "none" : "0 2px 4px rgba(99, 102, 241, 0.2)",
+              boxShadow:
+                currentHistoryIndex >= history.length - 1
+                  ? "none"
+                  : "0 2px 4px rgba(99, 102, 241, 0.2)",
             }}
             onMouseEnter={(e) => {
               if (currentHistoryIndex < history.length - 1) {
@@ -1534,7 +1706,7 @@ const Whiteboard = ({ role, userID, roomID }) => {
 
       {role === "teacher" && (
         <>
-          <Menu 
+          <Menu
             roomID={roomID}
             onEraserClick={handleEraserDropdown}
             onPencilClick={handlePencilDropdown}
@@ -1663,8 +1835,14 @@ const Whiteboard = ({ role, userID, roomID }) => {
         <div
           style={{
             position: "fixed",
-            left: `${Math.min(eraserDropdownPosition.x, window.innerWidth - 220)}px`,
-            top: `${Math.min(eraserDropdownPosition.y, window.innerHeight - 300)}px`,
+            left: `${Math.min(
+              eraserDropdownPosition.x,
+              window.innerWidth - 220
+            )}px`,
+            top: `${Math.min(
+              eraserDropdownPosition.y,
+              window.innerHeight - 300
+            )}px`,
             backgroundColor: "rgba(31, 41, 55, 0.95)",
             borderRadius: "12px",
             boxShadow: "0 10px 30px rgba(0, 0, 0, 0.3)",
@@ -1676,47 +1854,61 @@ const Whiteboard = ({ role, userID, roomID }) => {
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            marginBottom: "16px"
-          }}>
-            <div style={{
-              width: "24px",
-              height: "24px",
-              backgroundColor: "#4b5563",
-              borderRadius: "4px",
+          <div
+            style={{
               display: "flex",
               alignItems: "center",
-              justifyContent: "center",
-              border: "1px solid #6b7280"
-            }}>
+              gap: "8px",
+              marginBottom: "16px",
+            }}
+          >
+            <div
+              style={{
+                width: "24px",
+                height: "24px",
+                backgroundColor: "#4b5563",
+                borderRadius: "4px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                border: "1px solid #6b7280",
+              }}
+            >
               <span style={{ color: "#e5e7eb", fontSize: "14px" }}>✏️</span>
             </div>
-            <span style={{
-              fontSize: "16px",
-              fontWeight: "600",
-              color: "#e5e7eb"
-            }}>Eraser Size</span>
+            <span
+              style={{
+                fontSize: "16px",
+                fontWeight: "600",
+                color: "#e5e7eb",
+              }}
+            >
+              Eraser Size
+            </span>
           </div>
-          
+
           <div style={{ marginBottom: "16px" }}>
-            <div style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: "12px"
-            }}>
-              <span style={{ fontSize: "14px", color: "#9ca3af" }}>Size: {eraserSize}px</span>
-              <div style={{
-                width: `${Math.min(eraserSize, 32)}px`,
-                height: `${Math.min(eraserSize, 32)}px`,
-                backgroundColor: "#6b7280",
-                borderRadius: "50%",
-                border: "2px solid #9ca3af",
-                opacity: 0.8
-              }} />
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "12px",
+              }}
+            >
+              <span style={{ fontSize: "14px", color: "#9ca3af" }}>
+                Size: {eraserSize}px
+              </span>
+              <div
+                style={{
+                  width: `${Math.min(eraserSize, 32)}px`,
+                  height: `${Math.min(eraserSize, 32)}px`,
+                  backgroundColor: "#6b7280",
+                  borderRadius: "50%",
+                  border: "2px solid #9ca3af",
+                  opacity: 0.8,
+                }}
+              />
             </div>
             <input
               type="range"
@@ -1728,17 +1920,19 @@ const Whiteboard = ({ role, userID, roomID }) => {
                 width: "100%",
                 height: "6px",
                 borderRadius: "3px",
-                background: `linear-gradient(to right, #6366f1 0%, #6366f1 ${((eraserSize - 10) / 70) * 100}%, #374151 ${((eraserSize - 10) / 70) * 100}%, #374151 100%)`,
+                background: `linear-gradient(to right, #6366f1 0%, #6366f1 ${
+                  ((eraserSize - 10) / 70) * 100
+                }%, #374151 ${((eraserSize - 10) / 70) * 100}%, #374151 100%)`,
                 outline: "none",
                 cursor: "pointer",
                 appearance: "none",
-                WebkitAppearance: "none"
+                WebkitAppearance: "none",
               }}
             />
           </div>
-          
+
           <div style={{ display: "flex", gap: "6px", marginBottom: "12px" }}>
-            {[15, 25, 35, 50, 65].map(size => (
+            {[15, 25, 35, 50, 65].map((size) => (
               <button
                 key={size}
                 onClick={() => {
@@ -1747,14 +1941,17 @@ const Whiteboard = ({ role, userID, roomID }) => {
                 style={{
                   flex: 1,
                   padding: "6px 4px",
-                  border: eraserSize === size ? "2px solid #6366f1" : "1px solid #4b5563",
+                  border:
+                    eraserSize === size
+                      ? "2px solid #6366f1"
+                      : "1px solid #4b5563",
                   borderRadius: "6px",
                   backgroundColor: eraserSize === size ? "#6366f1" : "#374151",
                   cursor: "pointer",
                   fontSize: "11px",
                   fontWeight: "500",
                   color: eraserSize === size ? "#ffffff" : "#9ca3af",
-                  transition: "all 0.2s ease"
+                  transition: "all 0.2s ease",
                 }}
                 onMouseEnter={(e) => {
                   if (eraserSize !== size) {
@@ -1775,7 +1972,7 @@ const Whiteboard = ({ role, userID, roomID }) => {
               </button>
             ))}
           </div>
-          
+
           <div style={{ display: "flex", gap: "8px" }}>
             <button
               onClick={() => setShowEraserDropdown(false)}
@@ -1789,7 +1986,7 @@ const Whiteboard = ({ role, userID, roomID }) => {
                 fontSize: "14px",
                 fontWeight: "500",
                 cursor: "pointer",
-                transition: "all 0.2s ease"
+                transition: "all 0.2s ease",
               }}
               onMouseEnter={(e) => (e.target.style.backgroundColor = "#4f46e5")}
               onMouseLeave={(e) => (e.target.style.backgroundColor = "#6366f1")}
@@ -1812,25 +2009,18 @@ const Whiteboard = ({ role, userID, roomID }) => {
         width={window.innerWidth}
         height={window.innerHeight}
         id="canvas"
-
       />
-
-
-
-
 
       {/* Old poll system removed - using PollModal only */}
 
       {/* Old student poll system completely removed - using PollModal only */}
-
-
 
       {AISearchOpen && (
         <AiSearchPopup userID={userID} onClose={setAISearchOpen} />
       )}
 
       {/* View PDF Button for Students - HIDDEN (will be used later) */}
-      {role === 'student' && showPdfViewer && pdfUrl && (
+      {role === "student" && showPdfViewer && pdfUrl && (
         <div
           style={{
             position: "fixed",
@@ -1847,9 +2037,9 @@ const Whiteboard = ({ role, userID, roomID }) => {
             gap: "12px",
           }}
         >
-          <img 
-            src={pdfImage} 
-            alt="PDF" 
+          <img
+            src={pdfImage}
+            alt="PDF"
             style={{ width: "24px", height: "24px" }}
           />
           <span style={{ color: "#374151", fontWeight: "500" }}>
@@ -1889,14 +2079,20 @@ const Whiteboard = ({ role, userID, roomID }) => {
           </button>
         </div>
       )}
-      
+
       {/* Pencil Size Dropdown */}
       {showPencilDropdown && toolType === toolTypes.PENCIL && (
         <div
           style={{
             position: "fixed",
-            left: `${Math.min(pencilDropdownPosition.x, window.innerWidth - 220)}px`,
-            top: `${Math.min(pencilDropdownPosition.y, window.innerHeight - 280)}px`,
+            left: `${Math.min(
+              pencilDropdownPosition.x,
+              window.innerWidth - 220
+            )}px`,
+            top: `${Math.min(
+              pencilDropdownPosition.y,
+              window.innerHeight - 280
+            )}px`,
             backgroundColor: "rgba(31, 41, 55, 0.95)",
             borderRadius: "12px",
             boxShadow: "0 10px 30px rgba(0, 0, 0, 0.3)",
@@ -1908,47 +2104,61 @@ const Whiteboard = ({ role, userID, roomID }) => {
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            marginBottom: "16px"
-          }}>
-            <div style={{
-              width: "24px",
-              height: "24px",
-              backgroundColor: "#4b5563",
-              borderRadius: "4px",
+          <div
+            style={{
               display: "flex",
               alignItems: "center",
-              justifyContent: "center",
-              border: "1px solid #6b7280"
-            }}>
+              gap: "8px",
+              marginBottom: "16px",
+            }}
+          >
+            <div
+              style={{
+                width: "24px",
+                height: "24px",
+                backgroundColor: "#4b5563",
+                borderRadius: "4px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                border: "1px solid #6b7280",
+              }}
+            >
               <span style={{ color: "#e5e7eb", fontSize: "14px" }}>✏️</span>
             </div>
-            <span style={{
-              fontSize: "16px",
-              fontWeight: "600",
-              color: "#e5e7eb"
-            }}>Pencil Size</span>
+            <span
+              style={{
+                fontSize: "16px",
+                fontWeight: "600",
+                color: "#e5e7eb",
+              }}
+            >
+              Pencil Size
+            </span>
           </div>
-          
+
           <div style={{ marginBottom: "16px" }}>
-            <div style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: "12px"
-            }}>
-              <span style={{ fontSize: "14px", color: "#9ca3af" }}>Size: {pencilSize}px</span>
-              <div style={{
-                width: `${Math.min(pencilSize * 4, 24)}px`,
-                height: `${Math.min(pencilSize * 4, 24)}px`,
-                backgroundColor: selectedColor || "#6b7280",
-                borderRadius: "50%",
-                border: "2px solid #9ca3af",
-                opacity: 0.8
-              }} />
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "12px",
+              }}
+            >
+              <span style={{ fontSize: "14px", color: "#9ca3af" }}>
+                Size: {pencilSize}px
+              </span>
+              <div
+                style={{
+                  width: `${Math.min(pencilSize * 4, 24)}px`,
+                  height: `${Math.min(pencilSize * 4, 24)}px`,
+                  backgroundColor: selectedColor || "#6b7280",
+                  borderRadius: "50%",
+                  border: "2px solid #9ca3af",
+                  opacity: 0.8,
+                }}
+              />
             </div>
             <input
               type="range"
@@ -1960,17 +2170,19 @@ const Whiteboard = ({ role, userID, roomID }) => {
                 width: "100%",
                 height: "6px",
                 borderRadius: "3px",
-                background: `linear-gradient(to right, #6366f1 0%, #6366f1 ${((pencilSize - 1) / 9) * 100}%, #374151 ${((pencilSize - 1) / 9) * 100}%, #374151 100%)`,
+                background: `linear-gradient(to right, #6366f1 0%, #6366f1 ${
+                  ((pencilSize - 1) / 9) * 100
+                }%, #374151 ${((pencilSize - 1) / 9) * 100}%, #374151 100%)`,
                 outline: "none",
                 cursor: "pointer",
                 appearance: "none",
-                WebkitAppearance: "none"
+                WebkitAppearance: "none",
               }}
             />
           </div>
-          
+
           <div style={{ display: "flex", gap: "6px", marginBottom: "12px" }}>
-            {[1, 2, 3, 5, 8].map(size => (
+            {[1, 2, 3, 5, 8].map((size) => (
               <button
                 key={size}
                 onClick={() => {
@@ -1979,14 +2191,17 @@ const Whiteboard = ({ role, userID, roomID }) => {
                 style={{
                   flex: 1,
                   padding: "6px 4px",
-                  border: pencilSize === size ? "2px solid #6366f1" : "1px solid #4b5563",
+                  border:
+                    pencilSize === size
+                      ? "2px solid #6366f1"
+                      : "1px solid #4b5563",
                   borderRadius: "6px",
                   backgroundColor: pencilSize === size ? "#6366f1" : "#374151",
                   cursor: "pointer",
                   fontSize: "11px",
                   fontWeight: "500",
                   color: pencilSize === size ? "#ffffff" : "#9ca3af",
-                  transition: "all 0.2s ease"
+                  transition: "all 0.2s ease",
                 }}
                 onMouseEnter={(e) => {
                   if (pencilSize !== size) {
@@ -2007,7 +2222,7 @@ const Whiteboard = ({ role, userID, roomID }) => {
               </button>
             ))}
           </div>
-          
+
           <div style={{ display: "flex", gap: "8px" }}>
             <button
               onClick={() => setShowPencilDropdown(false)}
@@ -2021,7 +2236,7 @@ const Whiteboard = ({ role, userID, roomID }) => {
                 fontSize: "14px",
                 fontWeight: "500",
                 cursor: "pointer",
-                transition: "all 0.2s ease"
+                transition: "all 0.2s ease",
               }}
               onMouseEnter={(e) => (e.target.style.backgroundColor = "#4f46e5")}
               onMouseLeave={(e) => (e.target.style.backgroundColor = "#6366f1")}
@@ -2031,14 +2246,20 @@ const Whiteboard = ({ role, userID, roomID }) => {
           </div>
         </div>
       )}
-      
+
       {/* Fill Options Dropdown */}
       {showFillDropdown && (
         <div
           style={{
             position: "fixed",
-            left: `${Math.min(fillDropdownPosition.x, window.innerWidth - 250)}px`,
-            top: `${Math.min(fillDropdownPosition.y, window.innerHeight - 320)}px`,
+            left: `${Math.min(
+              fillDropdownPosition.x,
+              window.innerWidth - 250
+            )}px`,
+            top: `${Math.min(
+              fillDropdownPosition.y,
+              window.innerHeight - 320
+            )}px`,
             backgroundColor: "rgba(31, 41, 55, 0.95)",
             borderRadius: "12px",
             boxShadow: "0 10px 30px rgba(0, 0, 0, 0.3)",
@@ -2050,34 +2271,42 @@ const Whiteboard = ({ role, userID, roomID }) => {
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            marginBottom: "16px"
-          }}>
-            <div style={{
-              width: "24px",
-              height: "24px",
-              backgroundColor: "#4b5563",
-              borderRadius: "4px",
+          <div
+            style={{
               display: "flex",
               alignItems: "center",
-              justifyContent: "center",
-              border: "1px solid #6b7280"
-            }}>
+              gap: "8px",
+              marginBottom: "16px",
+            }}
+          >
+            <div
+              style={{
+                width: "24px",
+                height: "24px",
+                backgroundColor: "#4b5563",
+                borderRadius: "4px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                border: "1px solid #6b7280",
+              }}
+            >
               <span style={{ color: "#e5e7eb", fontSize: "14px" }}>🎨</span>
             </div>
-            <span style={{
-              fontSize: "16px",
-              fontWeight: "600",
-              color: "#e5e7eb"
-            }}>Fill Options</span>
+            <span
+              style={{
+                fontSize: "16px",
+                fontWeight: "600",
+                color: "#e5e7eb",
+              }}
+            >
+              Fill Options
+            </span>
           </div>
-          
+
           {/* Fill Mode Toggle */}
           <div style={{ marginBottom: "16px" }}>
-            <div 
+            <div
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -2087,7 +2316,7 @@ const Whiteboard = ({ role, userID, roomID }) => {
                 borderRadius: "6px",
                 backgroundColor: fillShape ? "#6366f1" : "#374151",
                 border: "1px solid #4b5563",
-                transition: "all 0.2s ease"
+                transition: "all 0.2s ease",
               }}
               onClick={(e) => {
                 e.stopPropagation();
@@ -2104,37 +2333,49 @@ const Whiteboard = ({ role, userID, roomID }) => {
                 }
               }}
             >
-              <div style={{
-                width: "18px",
-                height: "18px",
-                borderRadius: "3px",
-                backgroundColor: fillShape ? "#ffffff" : "transparent",
-                border: "2px solid #9ca3af",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center"
-              }}>
-                {fillShape && <span style={{ color: "#6366f1", fontSize: "12px" }}>✓</span>}
+              <div
+                style={{
+                  width: "18px",
+                  height: "18px",
+                  borderRadius: "3px",
+                  backgroundColor: fillShape ? "#ffffff" : "transparent",
+                  border: "2px solid #9ca3af",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {fillShape && (
+                  <span style={{ color: "#6366f1", fontSize: "12px" }}>✓</span>
+                )}
               </div>
-              <span style={{ color: "#e5e7eb", fontSize: "14px", fontWeight: "500" }}>
+              <span
+                style={{
+                  color: "#e5e7eb",
+                  fontSize: "14px",
+                  fontWeight: "500",
+                }}
+              >
                 Enable Fill
               </span>
             </div>
           </div>
-          
+
           {/* Fill Style Selector */}
           {fillShape && (
             <div style={{ marginBottom: "16px" }}>
-              <span style={{ 
-                fontSize: "12px", 
-                color: "#9ca3af", 
-                marginBottom: "8px", 
-                display: "block" 
-              }}>
-                Fill Style: {fillStylee || 'hachure'}
+              <span
+                style={{
+                  fontSize: "12px",
+                  color: "#9ca3af",
+                  marginBottom: "8px",
+                  display: "block",
+                }}
+              >
+                Fill Style: {fillStylee || "hachure"}
               </span>
               <select
-                value={fillStylee || 'hachure'}
+                value={fillStylee || "hachure"}
                 onChange={(e) => {
                   dispatch(setFillStyle(e.target.value));
                 }}
@@ -2148,7 +2389,7 @@ const Whiteboard = ({ role, userID, roomID }) => {
                   fontSize: "14px",
                   cursor: "pointer",
                   outline: "none",
-                  appearance: "none"
+                  appearance: "none",
                 }}
               >
                 <option value="hachure">Hachure</option>
@@ -2162,7 +2403,7 @@ const Whiteboard = ({ role, userID, roomID }) => {
               </select>
             </div>
           )}
-          
+
           <div style={{ display: "flex", gap: "8px" }}>
             <button
               onClick={() => setShowFillDropdown(false)}
@@ -2176,7 +2417,7 @@ const Whiteboard = ({ role, userID, roomID }) => {
                 fontSize: "14px",
                 fontWeight: "500",
                 cursor: "pointer",
-                transition: "all 0.2s ease"
+                transition: "all 0.2s ease",
               }}
               onMouseEnter={(e) => (e.target.style.backgroundColor = "#4f46e5")}
               onMouseLeave={(e) => (e.target.style.backgroundColor = "#6366f1")}
@@ -2394,7 +2635,7 @@ const Whiteboard = ({ role, userID, roomID }) => {
             userID: userID,
             message: message.text,
             roomID: roomID,
-            messageCopy: newMessages
+            messageCopy: newMessages,
           });
           dispatch(setMessages(newMessages));
         }}
@@ -2436,7 +2677,7 @@ const Whiteboard = ({ role, userID, roomID }) => {
           } else {
             setResultPoll("Oops wrong answer, better luck next time");
           }
-          
+
           // Keep modal open to show result, then auto-close after 5 seconds
           setTimeout(() => {
             setResultPoll("");

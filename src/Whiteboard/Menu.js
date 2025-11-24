@@ -1,23 +1,29 @@
 "use client";
-import React, { useState, useEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { toolTypes } from "../constants";
 import { motion } from "framer-motion";
-import { theme } from "../styles/theme";
+import { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import ShapeDropdown from "../components/ShapeDropdown";
+import { toolTypes } from "../constants";
+import Circle from "../resources/icons/circle.svg";
+import fillBucket from "../resources/icons/fillBucket.svg";
+import Bin from "../resources/icons/icons8-bin-50.png";
 import ImageIcon from "../resources/icons/ImageIcon.svg";
 import lineIcon from "../resources/icons/line.svg";
 import pencilIcon from "../resources/icons/pencil.svg";
 import rectangleIcon from "../resources/icons/rectangle.svg";
 import rubberIcon from "../resources/icons/rubber.svg";
-import fillBucket from "../resources/icons/fillBucket.svg";
 import selectionIcon from "../resources/icons/selection.svg";
 import textIcon from "../resources/icons/text.svg";
-import { emitClearWhiteboard } from "../socketConn/socketConn";
-import { setElements, setToolType } from "./whiteboardSlice";
+import { theme } from "../styles/theme";
 import ColorPicker from "./utils/ColorPicker";
-import Circle from "../resources/icons/circle.svg";
-import Bin from "../resources/icons/icons8-bin-50.png";
-import ShapeDropdown from "../components/ShapeDropdown";
+import { clearSlide, setToolType } from "./whiteboardSlice";
+import {
+  emitClearWhiteboard,
+  emitCreateSlide,
+  emitDeleteSlide,
+  emitRenameSlide,
+  emitSwitchSlide,
+} from "../socketConn/socketConn";
 
 // Helper function to get the correct icon for shape tools
 const getShapeIcon = (toolType) => {
@@ -27,27 +33,38 @@ const getShapeIcon = (toolType) => {
     case toolTypes.CIRCLE:
       return Circle;
     case toolTypes.TRIANGLE:
-      return '🔺';
+      return "🔺";
     case toolTypes.DIAMOND:
-      return '💎';
+      return "💎";
     case toolTypes.STAR:
-      return '⭐';
+      return "⭐";
     case toolTypes.ARROW:
-      return '➡️';
+      return "➡️";
     case toolTypes.PENTAGON:
-      return '⬠';
+      return "⬠";
     case toolTypes.HEXAGON:
-      return '⬡';
+      return "⬡";
     case toolTypes.HEART:
-      return '❤️';
+      return "❤️";
     case toolTypes.CLOUD:
-      return '☁️';
+      return "☁️";
     default:
       return rectangleIcon;
   }
 };
 
-const IconButton = ({ src, type, isRubber, isClearAll, roomID, onEraserClick, onPencilClick, onFillClick, onShapeClick, isShapeButton }) => {
+const IconButton = ({
+  src,
+  type,
+  isRubber,
+  isClearAll,
+  roomID,
+  onEraserClick,
+  onPencilClick,
+  onFillClick,
+  onShapeClick,
+  isShapeButton,
+}) => {
   const dispatch = useDispatch();
   const selectedToolType = useSelector((state) => state.whiteboard.tool);
   const fillShape = useSelector((state) => state.fillShape.filling);
@@ -57,8 +74,8 @@ const IconButton = ({ src, type, isRubber, isClearAll, roomID, onEraserClick, on
   };
 
   const handleClearCanvas = () => {
-    dispatch(setElements([]));
-    emitClearWhiteboard(roomID);
+    // dispatch(setElements([]));
+    // emitClearWhiteboard(roomID);
   };
 
   const handleClick = (event) => {
@@ -71,7 +88,7 @@ const IconButton = ({ src, type, isRubber, isClearAll, roomID, onEraserClick, on
       const rect = event.currentTarget.getBoundingClientRect();
       onEraserClick({
         x: rect.left + rect.width / 2,
-        y: rect.bottom + 10
+        y: rect.bottom + 10,
       });
     } else if (type === toolTypes.PENCIL && onPencilClick) {
       // For pencil, show dropdown and set tool
@@ -80,15 +97,15 @@ const IconButton = ({ src, type, isRubber, isClearAll, roomID, onEraserClick, on
       const rect = event.currentTarget.getBoundingClientRect();
       onPencilClick({
         x: rect.left + rect.width / 2,
-        y: rect.bottom + 10
+        y: rect.bottom + 10,
       });
-    } else if (type === 'FILL' && onFillClick) {
+    } else if (type === "FILL" && onFillClick) {
       // For fill, show dropdown
       event.stopPropagation();
       const rect = event.currentTarget.getBoundingClientRect();
       onFillClick({
         x: rect.left + rect.width / 2,
-        y: rect.bottom + 10
+        y: rect.bottom + 10,
       });
     } else if (isShapeButton && onShapeClick) {
       // For shapes, show dropdown
@@ -96,61 +113,78 @@ const IconButton = ({ src, type, isRubber, isClearAll, roomID, onEraserClick, on
       const rect = event.currentTarget.getBoundingClientRect();
       onShapeClick({
         x: rect.left + rect.width / 2,
-        y: rect.bottom + 10
+        y: rect.bottom + 10,
       });
     } else {
       handleToolChange();
     }
   };
 
-  const isActive = type === 'FILL' ? fillShape : 
-                   isShapeButton ? [toolTypes.RECTANGLE, toolTypes.CIRCLE, toolTypes.TRIANGLE, 
-                                    toolTypes.DIAMOND, toolTypes.STAR, toolTypes.ARROW, 
-                                    toolTypes.PENTAGON, toolTypes.HEXAGON, toolTypes.HEART, toolTypes.CLOUD].includes(selectedToolType) :
-                   selectedToolType === type;
-  
+  const isActive =
+    type === "FILL"
+      ? fillShape
+      : isShapeButton
+      ? [
+          toolTypes.RECTANGLE,
+          toolTypes.CIRCLE,
+          toolTypes.TRIANGLE,
+          toolTypes.DIAMOND,
+          toolTypes.STAR,
+          toolTypes.ARROW,
+          toolTypes.PENTAGON,
+          toolTypes.HEXAGON,
+          toolTypes.HEART,
+          toolTypes.CLOUD,
+        ].includes(selectedToolType)
+      : selectedToolType === type;
+
   const buttonStyle = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     width: "36px",
     height: "36px",
-    border: `1px solid ${isActive ? theme.colors.primary[400] : theme.colors.gray[600]}`,
+    border: `1px solid ${
+      isActive ? theme.colors.primary[400] : theme.colors.gray[600]
+    }`,
     borderRadius: theme.borderRadius.sm, // Smaller border radius
-    backgroundColor: isActive ? theme.colors.primary[500] : theme.colors.gray[700],
+    backgroundColor: isActive
+      ? theme.colors.primary[500]
+      : theme.colors.gray[700],
     cursor: "pointer",
     padding: "0px",
     transition: `all ${theme.animation.duration.normal} ${theme.animation.easing.default}`,
-    boxShadow: isActive 
-      ? theme.shadow.md 
-      : theme.shadow.sm,
+    boxShadow: isActive ? theme.shadow.md : theme.shadow.sm,
     transform: isActive ? "translateY(-1px)" : "translateY(0)",
   };
 
   // Check if src is an emoji (single character emojis or unicode emojis)
-  const isEmoji = typeof src === 'string' && (src.length <= 4 && !/\.(svg|png|jpg|jpeg|gif)$/i.test(src));
+  const isEmoji =
+    typeof src === "string" &&
+    src.length <= 4 &&
+    !/\.(svg|png|jpg|jpeg|gif)$/i.test(src);
 
   return (
     <button onClick={handleClick} style={buttonStyle}>
       {isEmoji ? (
-        <span 
+        <span
           style={{
-            fontSize: '20px',
-            lineHeight: '1',
-            opacity: isActive ? 1 : 0.8
+            fontSize: "20px",
+            lineHeight: "1",
+            opacity: isActive ? 1 : 0.8,
           }}
         >
           {src}
         </span>
       ) : (
-        <img 
-          alt="Tool Icon" 
-          width="70%" 
-          height="70%" 
+        <img
+          alt="Tool Icon"
+          width="70%"
+          height="70%"
           src={src}
           style={{
-            filter: 'invert(1) brightness(0.9)', // Make icons light for dark theme
-            opacity: isActive ? 1 : 0.8
+            filter: "invert(1) brightness(0.9)", // Make icons light for dark theme
+            opacity: isActive ? 1 : 0.8,
           }}
         />
       )}
@@ -162,8 +196,38 @@ const Menu = ({ roomID, onEraserClick, onPencilClick, onFillClick }) => {
   const dispatch = useDispatch();
   const [expanded, setExpanded] = useState(false);
   const [showShapeDropdown, setShowShapeDropdown] = useState(false);
-  const [shapeDropdownPosition, setShapeDropdownPosition] = useState({ x: 0, y: 0 });
+  const [shapeDropdownPosition, setShapeDropdownPosition] = useState({
+    x: 0,
+    y: 0,
+  });
   const selectedToolType = useSelector((state) => state.whiteboard.tool);
+  const slides = useSelector((state) => state.whiteboard.slides);
+  const currentSlide = useSelector((state) => state.whiteboard.currentSlide);
+  const currentSlideId = useSelector(
+    (state) => state.whiteboard.currentSlideId
+  );
+
+  const handleAddSlide = () => {
+    const newSlideTitle = `Slide ${slides.length + 1}`;
+    emitCreateSlide({ roomID, newSlideTitle });
+    // Server emit ke baad listener automatically Redux update karega
+  };
+
+  const handleDeleteSlide = () => {
+    if (slides.length === 0) return;
+    const slideId = slides[currentSlide].id;
+    emitDeleteSlide({ roomID, slideId });
+  };
+
+  const handleSwitchSlide = (index) => {
+    if (index < 0 || index >= slides.length) return;
+    const slideId = slides[index].id;
+    emitSwitchSlide({ roomID, slideId });
+  };
+
+  const handleRenameSlide = (slideId, newTitle) => {
+    emitRenameSlide({ roomID, slideId, newTitle });
+  };
 
   const handleShapeDropdown = (position) => {
     setShapeDropdownPosition(position);
@@ -175,13 +239,22 @@ const Menu = ({ roomID, onEraserClick, onPencilClick, onFillClick }) => {
   };
 
   // Check if current tool is a shape
-  const isShapeTool = [toolTypes.RECTANGLE, toolTypes.CIRCLE, toolTypes.TRIANGLE, 
-                       toolTypes.DIAMOND, toolTypes.STAR, toolTypes.ARROW, 
-                       toolTypes.PENTAGON, toolTypes.HEXAGON, toolTypes.HEART, toolTypes.CLOUD].includes(selectedToolType);
+  const isShapeTool = [
+    toolTypes.RECTANGLE,
+    toolTypes.CIRCLE,
+    toolTypes.TRIANGLE,
+    toolTypes.DIAMOND,
+    toolTypes.STAR,
+    toolTypes.ARROW,
+    toolTypes.PENTAGON,
+    toolTypes.HEXAGON,
+    toolTypes.HEART,
+    toolTypes.CLOUD,
+  ].includes(selectedToolType);
 
   // Calculate dynamic widths based on content
   const collapsedWidth = 160; // Reduced collapsed width
-  
+
   // Calculate expanded width with compact sizing
   // ColorPicker: ~100px, Each tool button: ~36px + gap, Clear button: ~40px, Reduced spacing
   const toolCount = 9; // Shapes, Line, Eraser, Pencil, Text, Selection, Image, Fill, Clear
@@ -190,11 +263,18 @@ const Menu = ({ roomID, onEraserClick, onPencilClick, onFillClick }) => {
   const colorPickerWidth = 100; // Reduced ColorPicker width
   const clearButtonWidth = 36; // Reduced clear button width to match other buttons
   const padding = 8; // Container outer padding
-  
-  const calculatedExpandedWidth = colorPickerWidth + (toolCount - 1) * (toolWidth + toolGap) + clearButtonWidth + padding;
-  
+
+  const calculatedExpandedWidth =
+    colorPickerWidth +
+    (toolCount - 1) * (toolWidth + toolGap) +
+    clearButtonWidth +
+    padding;
+
   // Ensure the width doesn't exceed viewport width with some margin
-  const maxWidth = typeof window !== 'undefined' ? Math.min(calculatedExpandedWidth, window.innerWidth - 40) : calculatedExpandedWidth;
+  const maxWidth =
+    typeof window !== "undefined"
+      ? Math.min(calculatedExpandedWidth, window.innerWidth - 40)
+      : calculatedExpandedWidth;
   const expandedWidth = Math.max(maxWidth, 500); // Reduced minimum expanded width for more compact layout
 
   useEffect(() => {
@@ -207,9 +287,12 @@ const Menu = ({ roomID, onEraserClick, onPencilClick, onFillClick }) => {
     return () => clearTimeout(timer);
   }, [expanded]);
 
-  const handleClearAll = () => {
-    dispatch(setElements([]));
-    emitClearWhiteboard(roomID);
+  const handleClearSlide = () => {
+    // 1️⃣ Redux store me current slide clear karo
+    dispatch(clearSlide(currentSlideId));
+
+    // 2️⃣ Socket event emit karo taaki baki clients bhi clear ho jaye
+    emitClearWhiteboard(roomID, currentSlideId);
   };
 
   const toggleExpand = () => {
@@ -281,7 +364,11 @@ const Menu = ({ roomID, onEraserClick, onPencilClick, onFillClick }) => {
             alt="Palette Icon"
             height={22}
             width={22}
-            style={{ marginRight: "8px", verticalAlign: "middle", filter: "invert(1) brightness(2)" }}
+            style={{
+              marginRight: "8px",
+              verticalAlign: "middle",
+              filter: "invert(1) brightness(2)",
+            }}
           />
           Drawing Toolkit
         </div>
@@ -291,28 +378,53 @@ const Menu = ({ roomID, onEraserClick, onPencilClick, onFillClick }) => {
           <ColorPicker />
 
           {/* Tool Buttons */}
-          <IconButton 
-            src={isShapeTool ? getShapeIcon(selectedToolType) : rectangleIcon} 
-            type="SHAPES" 
+          <IconButton
+            src={isShapeTool ? getShapeIcon(selectedToolType) : rectangleIcon}
+            type="SHAPES"
             isShapeButton={true}
             onShapeClick={handleShapeDropdown}
           />
           <IconButton src={lineIcon} type={toolTypes.LINE} />
-          <IconButton src={rubberIcon} type={toolTypes.ERASER} onEraserClick={onEraserClick} />
-          <IconButton src={pencilIcon} type={toolTypes.PENCIL} onPencilClick={onPencilClick} />
+          <IconButton
+            src={rubberIcon}
+            type={toolTypes.ERASER}
+            onEraserClick={onEraserClick}
+          />
+          <IconButton
+            src={pencilIcon}
+            type={toolTypes.PENCIL}
+            onPencilClick={onPencilClick}
+          />
           <IconButton src={textIcon} type={toolTypes.TEXT} />
           <IconButton src={selectionIcon} type={toolTypes.SELECTION} />
           <IconButton src={ImageIcon} type={toolTypes.IMAGE} />
           {/* Fill Tool Button - opens dropdown */}
-          <IconButton 
-            src={fillBucket} 
-            type="FILL" 
-            onFillClick={onFillClick}
-          />
+          <IconButton src={fillBucket} type="FILL" onFillClick={onFillClick} />
+
+          <div className="slide-menu">
+            <button onClick={handleAddSlide}>Add Slide</button>
+            <button onClick={handleDeleteSlide} disabled={slides.length === 0}>
+              Delete Slide
+            </button>
+
+            <div className="slide-list">
+              {slides.map((slide, idx) => (
+                <div
+                  key={slide.id}
+                  className={`slide-item ${
+                    idx === currentSlide ? "active" : ""
+                  }`}
+                  onClick={() => handleSwitchSlide(idx)}
+                >
+                  {slide.title}
+                </div>
+              ))}
+            </div>
+          </div>
 
           {/* Clear All Button */}
           <button
-            onClick={handleClearAll}
+            onClick={handleClearSlide}
             style={{
               display: "flex",
               alignItems: "center",
@@ -338,15 +450,20 @@ const Menu = ({ roomID, onEraserClick, onPencilClick, onFillClick }) => {
               e.target.style.boxShadow = theme.shadow.sm;
             }}
           >
-            <img src={Bin} alt="Clear All" height={20} width={20} style={{ filter: "invert(1) brightness(2)" }} />
+            <img
+              src={Bin}
+              alt="Clear All"
+              height={20}
+              width={20}
+              style={{ filter: "invert(1) brightness(2)" }}
+            />
           </button>
-
         </div>
       )}
-      
+
       {/* Shapes Dropdown */}
       {showShapeDropdown && (
-        <ShapeDropdown 
+        <ShapeDropdown
           position={shapeDropdownPosition}
           onClose={handleCloseShapeDropdown}
         />
