@@ -5,7 +5,7 @@ import { store } from "../../store/store";
 import { updateElementInStore } from "../whiteboardSlice";
 
 export const updatePencilElementWhenMoving = (
-  { index, newPoints, color }, // Add color parameter
+  { index, newPoints, color, t }, // Add color parameter
   elements,
   roomID, // ✅ Add roomID parameter
   currentSlideId,
@@ -33,11 +33,11 @@ export const updatePencilElementWhenMoving = (
 };
 
 export const updateElement = (
-  { id, x1, x2, y1, y2, type, index, text, src, color, fill, fillStyle },
+  { id, x1, x2, y1, y2, type, index, t, text, src, color, fill, fillStyle },
   elements,
   roomID,
   currentSlideId,
-  currentSlide
+  currentSlide,
 ) => {
   console.log(`\n\nFILL STYLE SANYAM :${fillStyle}\n\n`);
   const elementsCopy = [...elements];
@@ -66,6 +66,7 @@ export const updateElement = (
         fillColorStyle: fillStyle,
         currentSlideId,
         currentSlide,
+        startTime: t
       });
 
       elementsCopy[index] = updatedElement;
@@ -89,6 +90,7 @@ export const updateElement = (
           {
             x: x2,
             y: y2,
+            t
           },
         ],
         color, // Include color when updating
@@ -123,6 +125,7 @@ export const updateElement = (
           color, // Include color when updating
           currentSlideId,
           currentSlide,
+          startTime: t
         }),
       };
 
@@ -155,6 +158,7 @@ export const updateElement = (
           color, // Add color parameter
           currentSlideId,
           currentSlide,
+          startTime: t
         }),
       };
 

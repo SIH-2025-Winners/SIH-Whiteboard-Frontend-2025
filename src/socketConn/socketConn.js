@@ -526,6 +526,11 @@ export const listenForCursorRemoval = () => {
   });
 };
 
+export const saveWhiteboardState = (roomID) => {
+  socket.emit("whiteboard:saveAll", { roomID });
+}
+
+
 export const emitWebsiteShare = ({ websiteUrl, roomID, userID }) => {
   try {
     new URL(websiteUrl);

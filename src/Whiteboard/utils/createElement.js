@@ -514,6 +514,7 @@ export const createElement = ({
   strokeW,
   currentSlideId,
   currentSlide,
+  startTime
 }) => {
   let roughElement;
   const elementColor = color || "#000000";
@@ -545,6 +546,7 @@ export const createElement = ({
         color: elementColor,
         currentSlideId,
         currentSlide,
+        startTime
       };
 
     case toolTypes.LINE:
@@ -568,6 +570,7 @@ export const createElement = ({
         color: elementColor,
         currentSlideId,
         currentSlide,
+        startTime
       };
 
     case toolTypes.TRIANGLE:
@@ -594,6 +597,7 @@ export const createElement = ({
         color: elementColor, // Fixed: was using color directly
         currentSlideId,
         currentSlide,
+        startTime
       };
 
     case toolTypes.CIRCLE:
@@ -608,6 +612,7 @@ export const createElement = ({
         fillStylee: fillColorStyle,
         currentSlideId,
         currentSlide,
+        
       });
       return {
         id: id,
@@ -620,6 +625,7 @@ export const createElement = ({
         color: elementColor,
         currentSlideId,
         currentSlide,
+        startTime
       };
 
     case toolTypes.DIAMOND:
@@ -645,6 +651,7 @@ export const createElement = ({
         color: elementColor,
         currentSlideId,
         currentSlide,
+        startTime
       };
 
     case toolTypes.STAR:
@@ -670,6 +677,7 @@ export const createElement = ({
         color: elementColor,
         currentSlideId,
         currentSlide,
+        startTime
       };
 
     case toolTypes.ARROW:
@@ -695,6 +703,7 @@ export const createElement = ({
         color: elementColor,
         currentSlideId,
         currentSlide,
+        startTime
       };
 
     case toolTypes.PENTAGON:
@@ -720,6 +729,7 @@ export const createElement = ({
         color: elementColor,
         currentSlideId,
         currentSlide,
+        startTime
       };
 
     case toolTypes.HEXAGON:
@@ -745,6 +755,7 @@ export const createElement = ({
         color: elementColor,
         currentSlideId,
         currentSlide,
+        startTime
       };
 
     case toolTypes.HEART:
@@ -770,6 +781,7 @@ export const createElement = ({
         color: elementColor,
         currentSlideId,
         currentSlide,
+        startTime
       };
 
     case toolTypes.CLOUD:
@@ -795,6 +807,7 @@ export const createElement = ({
         color: elementColor,
         currentSlideId,
         currentSlide,
+        startTime
       };
 
     case toolTypes.PENCIL:
@@ -806,6 +819,7 @@ export const createElement = ({
         strokeWidth: strokeW || 3, // Use strokeW parameter or default to 3,
         currentSlideId,
         currentSlide,
+        startTime
       };
 
     case toolTypes.IMAGE:
@@ -823,6 +837,7 @@ export const createElement = ({
         height: Math.abs(y2 - y1) || 200,
         currentSlideId,
         currentSlide,
+        startTime
       };
 
       console.log("Created image element:", element);
@@ -840,6 +855,7 @@ export const createElement = ({
         color: elementColor,
         currentSlideId,
         currentSlide,
+        startTime
       };
 
     default:

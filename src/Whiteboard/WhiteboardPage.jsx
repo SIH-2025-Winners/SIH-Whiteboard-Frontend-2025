@@ -1,9 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import CursorOverlay from "../CursorOverlay/CursorOverlay";
-import { connectWithSocketServer } from "../socketConn/socketConn";
+import { connectWithSocketServer, saveWhiteboardState } from "../socketConn/socketConn";
 import Whiteboard from "./Whiteboard";
 import { useLocation } from "react-router-dom";
 import io from "socket.io-client";
+import { useDispatch } from "react-redux";
+import { startRecording as startRecordingInStore, stopRecording as stopRecordingInStore } from "./whiteboardSlice";
 
 const AUDIO_SERVER_URL =
   "https://audio-room-full-fina-sih-backend.onrender.com";
@@ -52,6 +54,7 @@ const peerConfig = {
 function WhiteboardPage() {
   const location = useLocation();
   const data = location.state;
+  const dispatch = useDispatch();
   console.log(`from min wb page ${JSON.stringify(data)}`);
 
   const audioSocketRef = useRef(null);
@@ -70,7 +73,7 @@ function WhiteboardPage() {
   const mediaRecorderRef = useRef(null);
   const recordingRef = useRef(false);
   const [downloadUrl, setDownloadUrl] = useState(null);
-  const [isRecording, setIsRecording] = useState(false);
+  const [isRecording, setIsRecording] = useState(true);
 
   useEffect(() => {
     connectWithSocketServer(data.roomID, data.userID);
@@ -351,6 +354,7 @@ function WhiteboardPage() {
 
   const startRecording = async () => {
     if (data.role !== "teacher") return;
+    dispatch(startRecordingInStore());
     if (!mixedStreamRef.current) {
       console.error("No mixed stream available — ensure mixer is setup and remote streams have been added.");
       // Try to initialize if not done
@@ -406,6 +410,7 @@ function WhiteboardPage() {
   };
 
   const stopRecording = () => {
+    dispatch(stopRecordingInStore());
     if (mediaRecorderRef.current) {
       recordingRef.current = false;
       try {
@@ -575,6 +580,9 @@ function WhiteboardPage() {
                   </>
                 )}
               </div>
+              <button onClick={() => {
+                saveWhiteboardState(data.roomID)
+              }}>Save all</button>
             </div>
 
             {/* Remote Participants */}

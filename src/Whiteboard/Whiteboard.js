@@ -36,7 +36,7 @@ import {
   emitMessages,
   emitRemoveCursor,
   listenForCursorRemoval,
-  quiz
+  quiz,
 } from "../socketConn/socketConn";
 import { clearFile } from "../store/fileSlice";
 import { store } from "../store/store";
@@ -138,6 +138,10 @@ const Whiteboard = ({ role, userID, roomID }) => {
   const fillStylee = useSelector((state) => state.fillShape.fillStyle);
   const websiteUrl = useSelector((state) => state.website.websiteUrl);
   const isDarkTheme = useSelector((state) => state.whiteboard.isDarkTheme);
+  const isRecording = useSelector((state) => state.whiteboard.startRecording);
+  const recordingStartTime = useSelector(
+    (state) => state.whiteboard.recordingStartTime
+  );
 
   const { slides, currentSlide } = useSelector((state) => state.whiteboard);
 
@@ -289,8 +293,6 @@ const Whiteboard = ({ role, userID, roomID }) => {
 
     // Listen for removal events from server
     listenForCursorRemoval();
-
-  
   }, []);
 
   useEffect(() => {
@@ -332,6 +334,8 @@ const Whiteboard = ({ role, userID, roomID }) => {
   // Simple eraser: works like pencil but with background color
   const startErasing = (x, y) => {
     const backgroundColor = isDarkTheme ? "#1f2937" : "#ffffff";
+    const now = Date.now();
+    const t = now - recordingStartTime;
 
     const eraserElement = {
       id: uuid(),
@@ -345,6 +349,7 @@ const Whiteboard = ({ role, userID, roomID }) => {
       strokeWidth: eraserSize,
       currentSlide,
       currentSlideId,
+      startTime: t,
     };
 
     dispatch(
@@ -578,6 +583,8 @@ const Whiteboard = ({ role, userID, roomID }) => {
 
     const { clientX, clientY } = event;
     const adjustedY = clientY;
+    const now = Date.now();
+    const t = now - recordingStartTime;
 
     if (selectedElement && action === actions.WRITING) {
       return;
@@ -605,6 +612,7 @@ const Whiteboard = ({ role, userID, roomID }) => {
           y1: adjustedY,
           x2: clientX,
           y2: adjustedY,
+
           toolType,
           id: uuid(),
           color: selectedColor,
@@ -613,6 +621,7 @@ const Whiteboard = ({ role, userID, roomID }) => {
           strokeW: toolType === toolTypes.PENCIL ? pencilSize : 2,
           currentSlideId,
           currentSlide,
+          startTime: t,
         });
 
         setAction(actions.DRAWING);
@@ -641,6 +650,7 @@ const Whiteboard = ({ role, userID, roomID }) => {
           color: selectedColor,
           currentSlideId,
           currentSlide,
+          startTime: t,
         });
 
         setAction(actions.WRITING);
@@ -769,7 +779,12 @@ const Whiteboard = ({ role, userID, roomID }) => {
       selectedElement
     ) {
       // Update eraser stroke just like pencil
-      const newPoints = [...selectedElement.points, { x: clientX, y: clientY }];
+      const now = Date.now();
+      const t = now - recordingStartTime;
+      const newPoints = [
+        ...selectedElement.points,
+        { x: clientX, y: clientY, t },
+      ];
       const elementsCopy = [...elements];
       const index = elementsCopy.findIndex(
         (el) => el.id === selectedElement.id
@@ -795,6 +810,8 @@ const Whiteboard = ({ role, userID, roomID }) => {
     // Handle drawing new elements
     if (action === actions.DRAWING && selectedElement) {
       const index = elements.findIndex((el) => el.id === selectedElement.id);
+      const now = Date.now();
+      const t = now - recordingStartTime;
 
       if (index !== -1) {
         const elementColor =
@@ -813,6 +830,7 @@ const Whiteboard = ({ role, userID, roomID }) => {
             y1: elements[index].y1,
             x2: clientX,
             y2: clientY,
+            t,
             type: elements[index].type,
             color: elementColor,
             fill: fillShape,
@@ -843,10 +861,15 @@ const Whiteboard = ({ role, userID, roomID }) => {
     ) {
       // Handle pencil movement
       if (selectedElement.type === toolTypes.PENCIL) {
-        const newPoints = selectedElement.points.map((_, index) => ({
+        
+        const newPoints = selectedElement.points.map((p, index) => ({
           x: clientX - selectedElement.xOffsets[index],
           y: clientY - selectedElement.yOffsets[index],
+          t: p.t
         }));
+
+        const now = Date.now();
+        const t = now - recordingStartTime;
 
         const index = elements.findIndex((el) => el.id === selectedElement.id);
         if (index !== -1) {
@@ -855,6 +878,7 @@ const Whiteboard = ({ role, userID, roomID }) => {
               index,
               newPoints,
               color: selectedElement.color,
+              t
             },
             elements,
             roomID, // ✅ Pass roomID here
@@ -895,6 +919,7 @@ const Whiteboard = ({ role, userID, roomID }) => {
 
       const index = elements.findIndex((el) => el.id === selectedElement.id);
 
+      
       if (index !== -1) {
         updateElement(
           {
@@ -925,6 +950,8 @@ const Whiteboard = ({ role, userID, roomID }) => {
       action === actions.RESIZING &&
       selectedElement
     ) {
+      const now = Date.now();
+      const t = now - recordingStartTime;
       console.log(`\n\n\ndsadsaadsada ${JSON.stringify(selectedElement)} \n\n`);
       const {
         id,
@@ -963,6 +990,7 @@ const Whiteboard = ({ role, userID, roomID }) => {
             color: selectedElement.color,
             fill: fill,
             fillStyle: fillColorStyle,
+            t
           },
           elements,
           roomID,
@@ -1542,6 +1570,7 @@ const Whiteboard = ({ role, userID, roomID }) => {
     img.onload = () => {
       const width = img.naturalWidth;
       const height = img.naturalHeight;
+      const t = Date.now() - recordingStartTime;
 
       const element = createElement({
         x1: mousePosition.x,
@@ -1554,6 +1583,7 @@ const Whiteboard = ({ role, userID, roomID }) => {
         color: selectedColor,
         currentSlideId,
         currentSlide,
+        startTime: t,
       });
 
       // Set correct dimensions

@@ -11,6 +11,8 @@ const initialState = {
   pollData: null,
   selectedColor: "#000000",
   isDarkTheme: false,
+  startRecording: true, // 🔥 yahi tumhara global flag
+  recordingStartTime: Date.now(), // 🔥 timestamps ke liye zaroori
 };
 
 const whiteboardSlice = createSlice({
@@ -156,6 +158,15 @@ const whiteboardSlice = createSlice({
     setUsers: (state, action) => {
       state.users = action.payload;
     },
+
+    startRecording : (state) => {
+      state.startRecording = true;
+      state.recordingStartTime = Date.now();
+    },
+    stopRecording : (state) => {
+      state.startRecording = false;
+      state.recordingStartTime = null;
+    },
   },
 });
 
@@ -181,6 +192,9 @@ export const {
   setQuizAnswer,
   toggleTheme,
   setSelectedColor,
+
+  stopRecording,
+  startRecording
 } = whiteboardSlice.actions;
 
 export default whiteboardSlice.reducer;

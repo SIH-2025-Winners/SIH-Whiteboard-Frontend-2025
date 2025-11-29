@@ -1,13 +1,12 @@
-import React from "react";
 import { createRoot } from "react-dom/client";
 import { Provider } from "react-redux";
-import { store } from "./store/store";
-import reportWebVitals from "./reportWebVitals";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 import "./index.css";
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import LandingPage from "./LandingPage";
+import reportWebVitals from "./reportWebVitals";
+import { store } from "./store/store";
 import WhiteboardPage from "./Whiteboard/WhiteboardPage";
-
+import WhiteboardPlayer from "./Whiteboard/WhiteboardReplay";
 
 const container = document.getElementById("root");
 const root = createRoot(container);
@@ -15,12 +14,14 @@ const root = createRoot(container);
 root.render(
   <Provider store={store}>
     <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/whiteboard" element={<WhiteboardPage />}>
-          </Route>
-        </Routes>
-      </BrowserRouter>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/whiteboard" element={<WhiteboardPage />}></Route>
+        <Route path="/whiteboard-replay" element={<WhiteboardPlayer />}></Route>
+
+
+      </Routes>
+    </BrowserRouter>
   </Provider>
 );
 
