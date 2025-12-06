@@ -256,17 +256,19 @@ const Menu = ({ roomID, onEraserClick, onPencilClick, onFillClick }) => {
   const collapsedWidth = 160; // Reduced collapsed width
 
   // Calculate expanded width with compact sizing
-  // ColorPicker: ~100px, Each tool button: ~36px + gap, Clear button: ~40px, Reduced spacing
+  // ColorPicker: ~100px, Each tool button: ~36px + gap, Slide controls: ~280px, Clear button: ~36px
   const toolCount = 9; // Shapes, Line, Eraser, Pencil, Text, Selection, Image, Fill, Clear
-  const toolWidth = 36; // Reduced tool button width
-  const toolGap = 16; // Increased gap between tools (theme.spacing.md)
-  const colorPickerWidth = 100; // Reduced ColorPicker width
-  const clearButtonWidth = 36; // Reduced clear button width to match other buttons
-  const padding = 8; // Container outer padding
+  const toolWidth = 36; // Tool button width
+  const toolGap = 12; // Gap between tools
+  const colorPickerWidth = 100; // ColorPicker width
+  const slideControlsWidth = 280; // Add + Delete buttons + Dropdown
+  const clearButtonWidth = 36; // Clear button width
+  const padding = 16; // Container outer padding
 
   const calculatedExpandedWidth =
     colorPickerWidth +
-    (toolCount - 1) * (toolWidth + toolGap) +
+    toolCount * (toolWidth + toolGap) +
+    slideControlsWidth +
     clearButtonWidth +
     padding;
 
@@ -275,17 +277,9 @@ const Menu = ({ roomID, onEraserClick, onPencilClick, onFillClick }) => {
     typeof window !== "undefined"
       ? Math.min(calculatedExpandedWidth, window.innerWidth - 40)
       : calculatedExpandedWidth;
-  const expandedWidth = Math.max(maxWidth, 500); // Reduced minimum expanded width for more compact layout
+  const expandedWidth = Math.max(maxWidth, 900); // Increased minimum to accommodate all controls
 
-  useEffect(() => {
-    let timer;
-    if (expanded) {
-      timer = setTimeout(() => {
-        setExpanded(false);
-      }, 4000); // collapse after 4 seconds
-    }
-    return () => clearTimeout(timer);
-  }, [expanded]);
+  // Auto-close timer removed - user will manually close with X button
 
   const handleClearSlide = () => {
     // 1️⃣ Redux store me current slide clear karo
@@ -338,12 +332,12 @@ const Menu = ({ roomID, onEraserClick, onPencilClick, onFillClick }) => {
     display: "flex",
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center", // Center content within container
-    gap: theme.spacing.md, // Increased gap between elements for better separation
-    padding: "0", // No inner padding - let container handle outer padding
+    justifyContent: "flex-start", // Align to start to prevent squeezing
+    gap: theme.spacing.sm, // Reduced gap for more compact layout
+    padding: "0 8px", // Small horizontal padding
     width: "100%",
     flexWrap: "nowrap", // Prevent wrapping
-    // overflow: "hidden", // Hide overflow if needed
+    overflow: "visible", // Allow overflow to be visible
   };
 
   return (
@@ -401,24 +395,138 @@ const Menu = ({ roomID, onEraserClick, onPencilClick, onFillClick }) => {
           {/* Fill Tool Button - opens dropdown */}
           <IconButton src={fillBucket} type="FILL" onFillClick={onFillClick} />
 
-          <div className="slide-menu">
-            <button onClick={handleAddSlide}>Add Slide</button>
-            <button onClick={handleDeleteSlide} disabled={slides.length === 0}>
-              Delete Slide
+          {/* Slide Controls - Redesigned */}
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            padding: "0 8px",
+            borderLeft: `1px solid ${theme.colors.gray[600]}`,
+            borderRight: `1px solid ${theme.colors.gray[600]}`,
+            marginLeft: "8px",
+          }}>
+            {/* Add Slide Button */}
+            <button
+              onClick={handleAddSlide}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "4px",
+                padding: "6px 8px",
+                border: `1px solid ${theme.colors.primary[400]}`,
+                borderRadius: theme.borderRadius.sm,
+                backgroundColor: theme.colors.primary[500],
+                color: theme.colors.white,
+                cursor: "pointer",
+                fontSize: "11px",
+                fontWeight: theme.typography.fontWeight.medium,
+                transition: `all ${theme.animation.duration.normal} ${theme.animation.easing.default}`,
+                boxShadow: theme.shadow.sm,
+                whiteSpace: "nowrap",
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = theme.colors.primary[600];
+                e.target.style.transform = "translateY(-1px)";
+                e.target.style.boxShadow = theme.shadow.md;
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = theme.colors.primary[500];
+                e.target.style.transform = "translateY(0)";
+                e.target.style.boxShadow = theme.shadow.sm;
+              }}
+              title="Add New Slide"
+            >
+              <span style={{ fontSize: "14px", lineHeight: "1" }}>➕</span>
+              <span>Add</span>
             </button>
 
-            <div className="slide-list">
-              {slides.map((slide, idx) => (
-                <div
-                  key={slide.id}
-                  className={`slide-item ${
-                    idx === currentSlide ? "active" : ""
-                  }`}
-                  onClick={() => handleSwitchSlide(idx)}
-                >
-                  {slide.title}
-                </div>
-              ))}
+            {/* Delete Slide Button */}
+            <button
+              onClick={handleDeleteSlide}
+              disabled={slides.length === 0}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "4px",
+                padding: "6px 8px",
+                border: `1px solid ${slides.length === 0 ? theme.colors.gray[600] : theme.colors.error[400]}`,
+                borderRadius: theme.borderRadius.sm,
+                backgroundColor: slides.length === 0 ? theme.colors.gray[700] : theme.colors.error[500],
+                color: slides.length === 0 ? theme.colors.gray[500] : theme.colors.white,
+                cursor: slides.length === 0 ? "not-allowed" : "pointer",
+                fontSize: "11px",
+                fontWeight: theme.typography.fontWeight.medium,
+                transition: `all ${theme.animation.duration.normal} ${theme.animation.easing.default}`,
+                boxShadow: slides.length === 0 ? "none" : theme.shadow.sm,
+                opacity: slides.length === 0 ? 0.5 : 1,
+                whiteSpace: "nowrap",
+              }}
+              onMouseEnter={(e) => {
+                if (slides.length > 0) {
+                  e.target.style.backgroundColor = theme.colors.error[600];
+                  e.target.style.transform = "translateY(-1px)";
+                  e.target.style.boxShadow = theme.shadow.md;
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (slides.length > 0) {
+                  e.target.style.backgroundColor = theme.colors.error[500];
+                  e.target.style.transform = "translateY(0)";
+                  e.target.style.boxShadow = theme.shadow.sm;
+                }
+              }}
+              title={slides.length === 0 ? "No slides to delete" : "Delete Current Slide"}
+            >
+              <span style={{ fontSize: "14px", lineHeight: "1" }}>🗑️</span>
+              <span>Del</span>
+            </button>
+
+            {/* Slide Selector Dropdown */}
+            <div style={{ position: "relative" }}>
+              <select
+                value={currentSlide}
+                onChange={(e) => handleSwitchSlide(parseInt(e.target.value))}
+                style={{
+                  padding: "6px 24px 6px 8px",
+                  border: `1px solid ${theme.colors.gray[600]}`,
+                  borderRadius: theme.borderRadius.sm,
+                  backgroundColor: theme.colors.gray[700],
+                  color: theme.colors.white,
+                  cursor: "pointer",
+                  fontSize: "11px",
+                  fontWeight: theme.typography.fontWeight.medium,
+                  transition: `all ${theme.animation.duration.normal} ${theme.animation.easing.default}`,
+                  boxShadow: theme.shadow.sm,
+                  appearance: "none",
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 12 12'%3E%3Cpath fill='%23ffffff' d='M6 9L1 4h10z'/%3E%3C/svg%3E")`,
+                  backgroundRepeat: "no-repeat",
+                  backgroundPosition: "right 6px center",
+                  minWidth: "100px",
+                  maxWidth: "120px",
+                  outline: "none",
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.backgroundColor = theme.colors.gray[600];
+                  e.target.style.borderColor = theme.colors.primary[400];
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.backgroundColor = theme.colors.gray[700];
+                  e.target.style.borderColor = theme.colors.gray[600];
+                }}
+                title="Switch Slide"
+              >
+                {slides.length === 0 ? (
+                  <option value={-1}>No Slides</option>
+                ) : (
+                  slides.map((slide, idx) => (
+                    <option key={slide.id} value={idx}>
+                      {slide.title}
+                    </option>
+                  ))
+                )}
+              </select>
             </div>
           </div>
 
@@ -457,6 +565,43 @@ const Menu = ({ roomID, onEraserClick, onPencilClick, onFillClick }) => {
               width={20}
               style={{ filter: "invert(1) brightness(2)" }}
             />
+          </button>
+
+          {/* Close Button */}
+          <button
+            onClick={toggleExpand}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "36px",
+              height: "36px",
+              border: `1px solid ${theme.colors.gray[600]}`,
+              borderRadius: theme.borderRadius.sm,
+              backgroundColor: theme.colors.gray[700],
+              cursor: "pointer",
+              transition: `all ${theme.animation.duration.normal} ${theme.animation.easing.default}`,
+              boxShadow: theme.shadow.sm,
+              marginLeft: "8px",
+            }}
+            title="Close Toolkit"
+            onMouseEnter={(e) => {
+              e.target.style.backgroundColor = theme.colors.gray[600];
+              e.target.style.transform = "translateY(-1px)";
+              e.target.style.boxShadow = theme.shadow.md;
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.backgroundColor = theme.colors.gray[700];
+              e.target.style.transform = "translateY(0)";
+              e.target.style.boxShadow = theme.shadow.sm;
+            }}
+          >
+            <span style={{ 
+              fontSize: "20px", 
+              lineHeight: "1", 
+              color: theme.colors.white,
+              fontWeight: "300"
+            }}>✕</span>
           </button>
         </div>
       )}
