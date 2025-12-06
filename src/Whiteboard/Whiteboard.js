@@ -861,11 +861,10 @@ const Whiteboard = ({ role, userID, roomID }) => {
     ) {
       // Handle pencil movement
       if (selectedElement.type === toolTypes.PENCIL) {
-        
         const newPoints = selectedElement.points.map((p, index) => ({
           x: clientX - selectedElement.xOffsets[index],
           y: clientY - selectedElement.yOffsets[index],
-          t: p.t
+          t: p.t,
         }));
 
         const now = Date.now();
@@ -878,7 +877,7 @@ const Whiteboard = ({ role, userID, roomID }) => {
               index,
               newPoints,
               color: selectedElement.color,
-              t
+              t,
             },
             elements,
             roomID, // ✅ Pass roomID here
@@ -919,7 +918,6 @@ const Whiteboard = ({ role, userID, roomID }) => {
 
       const index = elements.findIndex((el) => el.id === selectedElement.id);
 
-      
       if (index !== -1) {
         updateElement(
           {
@@ -990,7 +988,7 @@ const Whiteboard = ({ role, userID, roomID }) => {
             color: selectedElement.color,
             fill: fill,
             fillStyle: fillColorStyle,
-            t
+            t,
           },
           elements,
           roomID,
@@ -1491,25 +1489,12 @@ const Whiteboard = ({ role, userID, roomID }) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    console.log("=== FILE UPLOAD DEBUG ===");
     console.log("Selected file:", file.name, file.type, file.size);
 
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (evt) => {
-      console.log("FileReader result length:", evt.target.result.length);
-      console.log(
-        "FileReader result preview:",
-        evt.target.result.substring(0, 100)
-      );
-
-      emitFile({
-        roomID,
-        fileName: file.name,
-        fileType: file.type,
-        fileData: evt.target.result,
-      });
-    };
+    emitFile({
+      roomID,
+      file,
+    });
   };
 
   // const handleAddImage = () => {

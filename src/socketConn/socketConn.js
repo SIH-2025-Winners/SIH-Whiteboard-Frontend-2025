@@ -298,40 +298,53 @@ export const connectWithSocketServer = (roomID, userID) => {
     store.dispatch(setAnswerFromAI(result));
   });
 
-  socket.on("file-media", (compressedFileData) => {
-    console.log("Received compressed media file");
-    try {
-      const decompressed = pako.inflate(compressedFileData, { to: "string" });
-      const { fileName, fileType, fileData } = JSON.parse(decompressed);
+  // socket.on("file-media", (compressedFileData) => {
+  //   console.log("Received compressed media file");
+  //   try {
+  //     const decompressed = pako.inflate(compressedFileData, { to: "string" });
+  //     const { fileName, fileType, fileData } = JSON.parse(decompressed);
 
-      console.log("Decompressed file:", fileName, fileType);
-      store.dispatch(setFile(fileData)); // Set the data URL directly
-    } catch (error) {
-      console.error("Error processing compressed file:", error);
-    }
-  });
+  //     console.log("Decompressed file:", fileName, fileType);
+  //     store.dispatch(setFile(fileData)); // Set the data URL directly
+  //   } catch (error) {
+  //     console.error("Error processing compressed file:", error);
+  //   }
+  // });
 
-  socket.on("file-url", ({ fileName, fileType, fileData }) => {
-    console.log("Received URL/Text file:", fileName, fileType);
-    store.dispatch(setFile(fileData));
-  });
+  // socket.on("file-url", ({ fileName, fileType, fileData }) => {
+  //   console.log("Received URL/Text file:", fileName, fileType);
+  //   store.dispatch(setFile(fileData));
+  // });
 
-  socket.on("file-other", (compressedFileData) => {
-    console.log("Received other compressed file");
-    try {
-      const decompressed = pako.inflate(compressedFileData, { to: "string" });
-      const { fileData } = JSON.parse(decompressed);
-      // fileName and fileType unused in current implementation
-      store.dispatch(setFile(fileData));
-    } catch (error) {
-      console.error("Error processing other file:", error);
-    }
-  });
+  // socket.on("file-other", (compressedFileData) => {
+  //   console.log("Received other compressed file");
+  //   try {
+  //     const decompressed = pako.inflate(compressedFileData, { to: "string" });
+  //     const { fileData } = JSON.parse(decompressed);
+  //     // fileName and fileType unused in current implementation
+  //     store.dispatch(setFile(fileData));
+  //   } catch (error) {
+  //     console.error("Error processing other file:", error);
+  //   }
+  // });
 
-  // ✅ Update existing listener
-  socket.on("file-rechieved", ({ fileName, fileType, fileData }) => {
-    console.log("Received file via file-received:", fileName, fileType);
-    store.dispatch(setFile(fileData));
+  // // ✅ Update existing listener
+  // socket.on("file-rechieved", ({ fileName, fileType, fileData }) => {
+  //   console.log("Received file via file-received:", fileName, fileType);
+  //   store.dispatch(setFile(fileData));
+  // });
+
+  socket.on("pdf-received", ({ roomID, fileName, fileType, fileData }) => {
+    console.log("PDF received from backend:", fileName);
+
+    const uint8 = new Uint8Array(fileData);
+    const blob = new Blob([uint8], { type: fileType });
+    const url = URL.createObjectURL(blob);
+
+    console.log("PDF reconstructed URL:", url);
+
+    // Optional state update
+    store.dispatch(setFile({ url, fileName, fileType }));
   });
 
   socket.on("website-shared", ({ websiteUrl, userID }) => {
@@ -361,8 +374,6 @@ export const connectWithSocketServer = (roomID, userID) => {
       })
     );
   });
-
-  
 };
 
 export const emitElementUpdate = (
@@ -497,21 +508,71 @@ export const emitQuestion = ({ userID, question }) => {
   socket.emit("get-definition", { userID, question });
 };
 
-export const emitFile = ({ roomID, fileName, fileType, fileData }) => {
-  const data = fileData || fileName;
-  const blob =
-    typeof data === "string"
-      ? dataURLtoBlob(data)
-      : new Blob([data], { type: "application/pdf" });
-  const url = URL.createObjectURL(blob);
-  console.log("Generated blob URL:", url);
-  store.dispatch(setFile(url));
-  socket.emit("file", { roomID, fileName, fileType, fileData });
+// export const emitFile = ({ roomID, fileName, fileType, fileData }) => {
+//   const data = fileData || fileName;
+//   const blob =
+//     typeof data === "string"
+//       ? dataURLtoBlob(data)
+//       : new Blob([data], { type: "application/pdf" });
+//   const url = URL.createObjectURL(blob);
+//   console.log("Generated blob URL:", url);
+//   store.dispatch(setFile(url));
+//   socket.emit("file", { roomID, fileName, fileType, fileData });
+// };
+
+// export const emitFile = ({ roomID, file }) => {
+//   const fileName = file.name;
+//   const fileType = file.type;
+
+//   const reader = new FileReader();
+
+//   reader.onload = () => {
+//     const arrayBuffer = reader.result;
+//     const uint8 = new Uint8Array(arrayBuffer);
+
+//     socket.emit("upload-pdf", {
+//       roomID,
+//       fileName,
+//       fileType,
+//       fileData: Array.from(uint8),
+//     });
+//   };
+
+//   reader.readAsArrayBuffer(file);
+// };
+
+export const emitFile = ({ roomID, file }) => {
+  const fileName = file.name;
+  const fileType = file.type;
+
+  const reader = new FileReader();
+
+  reader.onload = () => {
+    const arrayBuffer = reader.result;
+    const uint8 = new Uint8Array(arrayBuffer);
+
+    const chunkSize = 50 * 1024; // 50KB , safe for socket
+    const totalChunks = Math.ceil(uint8.length / chunkSize);
+
+    for (let index = 0; index < totalChunks; index++) {
+      const chunk = uint8.slice(index * chunkSize, (index + 1) * chunkSize);
+
+      socket.emit("upload-pdf-chunk", {
+        roomID,
+        fileName,
+        fileType,
+        chunkIndex: index,
+        totalChunks,
+        chunk: Array.from(chunk),
+      });
+    }
+  };
+
+  reader.readAsArrayBuffer(file);
 };
 
 export const emitRemoveCursor = ({ roomID, userId }) => {
-
-  console.log(`\n\nuserID : ${userId}\n\n`)
+  console.log(`\n\nuserID : ${userId}\n\n`);
   if (socket && socket.connected) {
     socket.emit("remove-cursor-position", { roomID, userId });
   }
@@ -521,15 +582,14 @@ export const emitRemoveCursor = ({ roomID, userId }) => {
 export const listenForCursorRemoval = () => {
   if (!socket) return;
   socket.on("cursor-position-removed", ({ userId }) => {
-    console.log(`\n\n\n\nfdsfbsdfksdsjkf\n\n\n${userId}\n\n\n\n\n\n`)
+    console.log(`\n\n\n\nfdsfbsdfksdsjkf\n\n\n${userId}\n\n\n\n\n\n`);
     store.dispatch(removeCursorPosition(userId));
   });
 };
 
 export const saveWhiteboardState = (roomID) => {
   socket.emit("whiteboard:saveAll", { roomID });
-}
-
+};
 
 export const emitWebsiteShare = ({ websiteUrl, roomID, userID }) => {
   try {
