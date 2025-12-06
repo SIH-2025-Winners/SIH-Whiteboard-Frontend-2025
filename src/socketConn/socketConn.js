@@ -51,7 +51,7 @@ export const decompress = (data) => {
 };
 
 export const connectWithSocketServer = (roomID, userID) => {
-  socket = io("http://localhost:3003", {
+  socket = io("https://sih-whiteboard-backend-socket-2025.onrender.com", {
     transports: ["websocket", "polling"],
     timeout: 20000,
     reconnection: true,
