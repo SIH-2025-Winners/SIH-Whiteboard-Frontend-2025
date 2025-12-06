@@ -8,10 +8,10 @@ import { useDispatch } from "react-redux";
 import { startRecording as startRecordingInStore, stopRecording as stopRecordingInStore } from "./whiteboardSlice";
 
 const AUDIO_SERVER_URL =
-  "https://audio-room-full-fina-sih-backend.onrender.com";
+  "https://sih-audio-2025-backend.onrender.com";
 
 // If your chunk-upload backend runs on a different origin, change this.
-const UPLOAD_SERVER_URL = "https://audio-room-full-fina-sih-backend.onrender.com";
+const UPLOAD_SERVER_URL = "https://sih-audio-2025-backend.onrender.com";
 
 // Socket.IO configuration with retry logic
 const socketConfig = {
