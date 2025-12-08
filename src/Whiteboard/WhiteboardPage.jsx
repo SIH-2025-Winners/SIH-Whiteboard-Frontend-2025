@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import CursorOverlay from "../CursorOverlay/CursorOverlay";
 import {
   connectWithSocketServer,
+  emitDisconnecting,
   saveWhiteboardState,
 } from "../socketConn/socketConn";
 import Whiteboard from "./Whiteboard";
@@ -13,10 +14,10 @@ import {
   stopRecording as stopRecordingInStore,
 } from "./whiteboardSlice";
 
-const AUDIO_SERVER_URL = "https://sih-audio-2025-backend.onrender.com";
+const AUDIO_SERVER_URL = "http://localhost:3001";
 
 // If your chunk-upload backend runs on a different origin, change this.
-const UPLOAD_SERVER_URL = "https://sih-audio-2025-backend.onrender.com";
+const UPLOAD_SERVER_URL = "http://localhost:3001";
 
 // Socket.IO configuration with retry logic
 const socketConfig = {
@@ -79,6 +80,8 @@ function WhiteboardPage() {
   const recordingRef = useRef(false);
   const [downloadUrl, setDownloadUrl] = useState(null);
   const [isRecording, setIsRecording] = useState(true);
+
+ 
 
   useEffect(() => {
     connectWithSocketServer(data.roomID, data.userID);
@@ -151,7 +154,7 @@ function WhiteboardPage() {
         });
       });
 
-      socket.on("disconnect", (reason) => {
+      socket.on(" t", (reason) => {
         console.log("❌ Socket disconnected:", reason);
       });
 
@@ -530,7 +533,7 @@ function WhiteboardPage() {
               style={{
                 position: "fixed",
                 bottom: "20px",
-                right: "20px",
+                left: "20px",
                 width: "240px",
                 height: "180px",
                 borderRadius: "12px",

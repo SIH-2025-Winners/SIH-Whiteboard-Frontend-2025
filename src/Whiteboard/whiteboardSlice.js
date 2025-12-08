@@ -11,7 +11,7 @@ const initialState = {
   pollData: null,
   selectedColor: "#000000",
   isDarkTheme: false,
-  startRecording: true, // 🔥 yahi tumhara global flag
+  startRecording: false, // 🔥 yahi tumhara global flag
   recordingStartTime: Date.now(), // 🔥 timestamps ke liye zaroori
 };
 

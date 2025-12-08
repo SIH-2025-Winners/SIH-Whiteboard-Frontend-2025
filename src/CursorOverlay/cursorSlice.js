@@ -29,7 +29,8 @@ const cursorSlice = createSlice({
       }
     },
     removeCursorPosition: (state, action) => {
-      state.cursors = state.cursors.filter((c) => c.userId !== action.payload);
+      console.log(`\n\n\nRemoving cursor with ID: ${action.payload.userId}\n\n\n`);
+      state.cursors = state.cursors.filter((c) => c.userId !== action.payload.userId);
       console.log(state.cursors)
     },
   },

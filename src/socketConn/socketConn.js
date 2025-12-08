@@ -51,7 +51,7 @@ export const decompress = (data) => {
 };
 
 export const connectWithSocketServer = (roomID, userID) => {
-  socket = io("https://sih-whiteboard-backend-socket-2025.onrender.com", {
+  socket = io("http://localhost:3003", {
     transports: ["websocket", "polling"],
     timeout: 20000,
     reconnection: true,
@@ -111,7 +111,7 @@ export const connectWithSocketServer = (roomID, userID) => {
 
   socket.on("user-disconnected", ({ userID: disconnectedUserId }) => {
     console.log(`User with ID ${disconnectedUserId} has disconnected.`);
-    store.dispatch(removeCursorPosition(disconnectedUserId));
+    store.dispatch(removeCursorPosition({userId: disconnectedUserId}));
   });
 
   socket.on("slide-created", ({ slide, currentSlide }) => {
@@ -186,6 +186,11 @@ export const connectWithSocketServer = (roomID, userID) => {
     store.dispatch(removeElement({ elementId, slideId }));
   });
 
+  socket.on("disconnect-and-remove-cursor", ({userID}) => {
+    console.log(`\n\n\nRemoving cursor and emitting on line 190 in socketConn.js file \n\n\n\n`);
+    store.dispatch(removeCursorPosition(userID));
+  })
+
   socket.on("whiteboard-clear", ({ scope, slideId }) => {
     if (scope === "all") {
       store.dispatch(clearAllSlides());
@@ -196,7 +201,7 @@ export const connectWithSocketServer = (roomID, userID) => {
 
   // Theme synchronization now handled via message system above
 
-  socket.on("cursor-position", (cursorData) => {
+  socket.on("cursor-position-backend", (cursorData) => {
     setTimeout(() => {
       store.dispatch(updateCursorPosition(cursorData));
     }, 350);
@@ -685,5 +690,15 @@ export const getSocketId = () => {
 export const reconnectSocket = () => {
   if (socket && !socket.connected) {
     socket.connect();
+  }
+};
+
+export const emitDisconnecting = (roomID, userID) => {
+  if (socket && socket.connected) {
+    console.log("🚨 Emitting user-disconnecting event");
+    socket.emit("user-disconnecting", {
+      roomID,
+      userID,
+    });
   }
 };

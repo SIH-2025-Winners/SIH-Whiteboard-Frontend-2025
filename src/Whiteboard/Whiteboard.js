@@ -31,6 +31,7 @@ import pdfImage from "../resources/icons/icons8-pdf-50.png";
 // Socket and Store
 import {
   emitCursorPosition,
+  emitDisconnecting,
   emitFile,
   emitImageElement,
   emitMessages,
@@ -158,6 +159,19 @@ const Whiteboard = ({ role, userID, roomID }) => {
   const [imageUrl, setImageUrl] = useState();
   const [pdfUrl, setPdfUrl] = useState(null);
   const [showPdfViewer, setShowPdfViewer] = useState(false);
+
+
+   useEffect(() => {
+      const handleTabClose = () => {
+        emitDisconnecting(roomID, userID);
+      };
+  
+      window.addEventListener("beforeunload", handleTabClose);
+  
+      return () => {
+        window.removeEventListener("beforeunload", handleTabClose);
+      };
+    }, [roomID, userID]);
 
   // Set pencil as default tool for teachers
   useEffect(() => {
