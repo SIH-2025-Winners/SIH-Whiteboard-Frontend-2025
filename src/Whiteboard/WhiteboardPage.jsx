@@ -4,7 +4,7 @@ import { connectWithSocketServer, saveWhiteboardState } from "../socketConn/sock
 import Whiteboard from "./Whiteboard";
 import { useLocation } from "react-router-dom";
 import io from "socket.io-client";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 import { startRecording as startRecordingInStore, stopRecording as stopRecordingInStore } from "./whiteboardSlice";
 
 const AUDIO_SERVER_URL =
@@ -73,7 +73,7 @@ function WhiteboardPage() {
   const mediaRecorderRef = useRef(null);
   const recordingRef = useRef(false);
   const [downloadUrl, setDownloadUrl] = useState(null);
-  const isRecording = useSelector((state) => state.whiteboard.startRecording);
+  const [isRecording, setIsRecording] = useState(false);
 
   useEffect(() => {
     connectWithSocketServer(data.roomID, data.userID);
@@ -372,7 +372,7 @@ function WhiteboardPage() {
     }
 
     recordingRef.current = true;
-    dispatch(startRecording());
+    setIsRecording(true);
 
     const recorder = new MediaRecorder(mixedStreamRef.current, {
       mimeType: "audio/webm"
@@ -420,7 +420,7 @@ function WhiteboardPage() {
       }
       mediaRecorderRef.current = null;
     }
-    dispatch(stopRecordingInStore());
+    setIsRecording(false);
     console.log("Recording stopped.");
   };
 
