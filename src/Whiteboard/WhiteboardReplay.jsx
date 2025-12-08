@@ -5365,89 +5365,307 @@ const WhiteboardPlayer = () => {
   const hasPrevSlide = currentSlideIndex > 0;
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
-      <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-5xl">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold">Whiteboard Replay</h2>
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <Volume2 size={16} />
-            {audioLoaded ? 'Audio Ready' : 'Loading Audio...'}
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: '100vh',
+      background: 'linear-gradient(to bottom right, #f8fafc, #dbeafe, #e0e7ff)',
+      padding: '24px'
+    }}>
+      <div style={{
+        background: 'rgba(255, 255, 255, 0.8)',
+        backdropFilter: 'blur(8px)',
+        borderRadius: '16px',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+        padding: '32px',
+        width: '100%',
+        maxWidth: '1152px',
+        border: '1px solid #f3f4f6'
+      }}>
+        {/* Header */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '24px'
+        }}>
+          <h2 style={{
+            fontSize: '30px',
+            fontWeight: 'bold',
+            background: 'linear-gradient(to right, #2563eb, #4f46e5)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+            margin: 0
+          }}>
+            Whiteboard Replay
+          </h2>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '8px 16px',
+            background: 'linear-gradient(to right, #d1fae5, #ccfbf1)',
+            borderRadius: '9999px',
+            border: '1px solid #a7f3d0'
+          }}>
+            <Volume2 size={18} style={{ color: audioLoaded ? '#059669' : '#9ca3af' }} />
+            <span style={{
+              fontSize: '14px',
+              fontWeight: '500',
+              color: audioLoaded ? '#047857' : '#6b7280'
+            }}>
+              {audioLoaded ? 'Audio Ready' : 'Loading Audio...'}
+            </span>
           </div>
         </div>
         
-        <div className="mb-4 bg-gray-50 p-3 rounded">
-          <p className="text-sm text-gray-600">
-            Slide {currentSlideIndex + 1} of {classData.slides.length}: {currentSlide?.title}
+        {/* Slide Info */}
+        <div style={{
+          marginBottom: '24px',
+          background: 'linear-gradient(to right, #eff6ff, #eef2ff)',
+          padding: '16px',
+          borderRadius: '12px',
+          border: '1px solid #dbeafe'
+        }}>
+          <p style={{
+            fontSize: '14px',
+            fontWeight: '600',
+            color: '#374151',
+            margin: 0
+          }}>
+            Slide {currentSlideIndex + 1} of {classData.slides.length}: <span style={{ color: '#2563eb' }}>{currentSlide?.title}</span>
           </p>
-          <p className="text-xs text-gray-500 mt-1">
+          <p style={{
+            fontSize: '12px',
+            color: '#6b7280',
+            marginTop: '6px',
+            marginBottom: 0
+          }}>
             Timeline: {timeline.length} elements sorted by time
           </p>
         </div>
 
-        <canvas
-          ref={canvasRef}
-          width={1200}
-          height={600}
-          className="border border-gray-300 rounded mb-4 w-full bg-white"
-          style={{ maxWidth: '100%', height: 'auto' }}
-        />
+        {/* Canvas */}
+        <div style={{
+          marginBottom: '24px',
+          borderRadius: '12px',
+          overflow: 'hidden',
+          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+          border: '2px solid #e5e7eb'
+        }}>
+          <canvas
+            ref={canvasRef}
+            width={1200}
+            height={600}
+            style={{
+              width: '100%',
+              maxWidth: '100%',
+              height: 'auto',
+              background: '#ffffff',
+              display: 'block'
+            }}
+          />
+        </div>
 
         <audio ref={audioRef} src={classData.audioUrl} preload="auto" />
 
-        <div className="mb-4">
+        {/* Progress Bar */}
+        <div style={{ marginBottom: '24px' }}>
           <div 
-            className="w-full bg-gray-200 h-2 rounded cursor-pointer"
+            style={{
+              width: '100%',
+              background: '#e5e7eb',
+              height: '12px',
+              borderRadius: '9999px',
+              cursor: 'pointer',
+              overflow: 'hidden',
+              boxShadow: 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.06)'
+            }}
             onClick={handleSeek}
           >
             <div
-              className="bg-blue-500 h-2 rounded transition-all"
-              style={{ width: `${(currentTime / duration) * 100}%` }}
+              style={{
+                background: 'linear-gradient(to right, #3b82f6, #6366f1)',
+                height: '12px',
+                borderRadius: '9999px',
+                transition: 'all 0.2s',
+                boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+                width: `${(currentTime / duration) * 100}%`
+              }}
             />
           </div>
-          <div className="flex justify-between mt-1 text-xs text-gray-600">
-            <span>{formatTime(currentTime)}</span>
-            <span>{formatTime(duration)}</span>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            marginTop: '8px'
+          }}>
+            <span style={{
+              fontSize: '12px',
+              fontWeight: '500',
+              color: '#4b5563',
+              padding: '4px 8px',
+              background: '#f3f4f6',
+              borderRadius: '6px'
+            }}>{formatTime(currentTime)}</span>
+            
           </div>
         </div>
 
-        <div className="flex items-center justify-center gap-4">
+        {/* Controls */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '12px'
+        }}>
           <button
             onClick={handlePrevSlide}
             disabled={!hasPrevSlide}
-            className="p-2 rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            style={{
+              padding: '12px',
+              borderRadius: '12px',
+              background: 'linear-gradient(to bottom right, #f3f4f6, #e5e7eb)',
+              border: 'none',
+              cursor: hasPrevSlide ? 'pointer' : 'not-allowed',
+              opacity: hasPrevSlide ? 1 : 0.4,
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+              transition: 'all 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
             title="Previous Slide"
+            onMouseEnter={(e) => {
+              if (hasPrevSlide) {
+                e.currentTarget.style.background = 'linear-gradient(to bottom right, #e5e7eb, #d1d5db)';
+                e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'linear-gradient(to bottom right, #f3f4f6, #e5e7eb)';
+              e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+            }}
+            onMouseDown={(e) => {
+              if (hasPrevSlide) e.currentTarget.style.transform = 'scale(0.95)';
+            }}
+            onMouseUp={(e) => {
+              e.currentTarget.style.transform = 'scale(1)';
+            }}
           >
-            <SkipBack size={20} />
+            <SkipBack size={22} style={{ color: '#374151' }} />
           </button>
 
           <button
             onClick={handlePlayPause}
-            className="p-3 rounded-full bg-blue-500 hover:bg-blue-600 text-white transition"
+            style={{
+              padding: '16px',
+              borderRadius: '9999px',
+              background: 'linear-gradient(to bottom right, #3b82f6, #4f46e5)',
+              border: 'none',
+              cursor: 'pointer',
+              color: '#ffffff',
+              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+              transition: 'all 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
             title={isPlaying ? "Pause" : "Play"}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'linear-gradient(to bottom right, #2563eb, #4338ca)';
+              e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'linear-gradient(to bottom right, #3b82f6, #4f46e5)';
+              e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)';
+            }}
+            onMouseDown={(e) => {
+              e.currentTarget.style.transform = 'scale(0.95)';
+            }}
+            onMouseUp={(e) => {
+              e.currentTarget.style.transform = 'scale(1)';
+            }}
           >
-            {isPlaying ? <Pause size={24} /> : <Play size={24} />}
+            {isPlaying ? <Pause size={28} /> : <Play size={28} style={{ marginLeft: '2px' }} />}
           </button>
 
           <button
             onClick={handleStop}
-            className="p-2 rounded bg-gray-200 hover:bg-gray-300 transition"
+            style={{
+              padding: '12px',
+              borderRadius: '12px',
+              background: 'linear-gradient(to bottom right, #f3f4f6, #e5e7eb)',
+              border: 'none',
+              cursor: 'pointer',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+              transition: 'all 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
             title="Stop"
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'linear-gradient(to bottom right, #e5e7eb, #d1d5db)';
+              e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'linear-gradient(to bottom right, #f3f4f6, #e5e7eb)';
+              e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+            }}
+            onMouseDown={(e) => {
+              e.currentTarget.style.transform = 'scale(0.95)';
+            }}
+            onMouseUp={(e) => {
+              e.currentTarget.style.transform = 'scale(1)';
+            }}
           >
-            <Square size={20} />
+            <Square size={22} style={{ color: '#374151' }} />
           </button>
 
           <button
             onClick={handleNextSlide}
             disabled={!hasNextSlide}
-            className="p-2 rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            style={{
+              padding: '12px',
+              borderRadius: '12px',
+              background: 'linear-gradient(to bottom right, #f3f4f6, #e5e7eb)',
+              border: 'none',
+              cursor: hasNextSlide ? 'pointer' : 'not-allowed',
+              opacity: hasNextSlide ? 1 : 0.4,
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+              transition: 'all 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
             title="Next Slide"
+            onMouseEnter={(e) => {
+              if (hasNextSlide) {
+                e.currentTarget.style.background = 'linear-gradient(to bottom right, #e5e7eb, #d1d5db)';
+                e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'linear-gradient(to bottom right, #f3f4f6, #e5e7eb)';
+              e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+            }}
+            onMouseDown={(e) => {
+              if (hasNextSlide) e.currentTarget.style.transform = 'scale(0.95)';
+            }}
+            onMouseUp={(e) => {
+              e.currentTarget.style.transform = 'scale(1)';
+            }}
           >
-            <SkipForward size={20} />
+            <SkipForward size={22} style={{ color: '#374151' }} />
           </button>
         </div>
       </div>
     </div>
   );
+
 };
 
 export default WhiteboardPlayer;
