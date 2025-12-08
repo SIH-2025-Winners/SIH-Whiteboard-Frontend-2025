@@ -1,13 +1,13 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { useLocation } from "react-router-dom";
+import io from "socket.io-client";
 import CursorOverlay from "../CursorOverlay/CursorOverlay";
 import {
   connectWithSocketServer,
   saveWhiteboardState,
 } from "../socketConn/socketConn";
 import Whiteboard from "./Whiteboard";
-import { useLocation } from "react-router-dom";
-import io from "socket.io-client";
-import { useDispatch, useSelector } from "react-redux";
 import {
   startRecording as startRecordingInStore,
   stopRecording as stopRecordingInStore,
@@ -487,6 +487,8 @@ function WhiteboardPage() {
         width: "10vw",
       }}
     >
+
+      {/* <DoubtsPanel roomID={data.roomID}/> */}
       {data.role === "student" && (
         <>
           {/* Toggle Button */}

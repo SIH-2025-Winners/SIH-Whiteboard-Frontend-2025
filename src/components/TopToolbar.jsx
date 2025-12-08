@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { theme } from '../styles/theme';
 import { toggleTheme } from '../Whiteboard/whiteboardSlice';
 import { emitThemeChange } from '../socketConn/socketConn';
+import DoubtsPanel from '../Whiteboard/doubtPanel';
 
 const TopToolbar = ({ 
   role, 
@@ -159,6 +160,8 @@ const TopToolbar = ({
             </div>
           </div>
         </div>
+
+        <DoubtsPanel roomID={roomID} role={role}/>
 
         {/* Right Section - Action Buttons */}
         <div style={{ 

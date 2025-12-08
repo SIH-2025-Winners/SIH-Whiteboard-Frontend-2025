@@ -9,11 +9,13 @@ import { setAnswerFromAI } from "../store/questionSlice";
 import { store } from "../store/store";
 import { resetSharingState, setSharedWebsite } from "../store/websiteSlice";
 import {
+  addDoubt,
   clearAllSlides,
   clearSlide,
   createSlide,
   deleteSlide,
   removeElement,
+  setDoubts,
   setElementsForSlide,
   setMessages,
   setPayloadSize,
@@ -24,6 +26,7 @@ import {
   switchSlide,
   toggleTheme,
   updateElementInStore,
+  upvoteDoubt,
 } from "../Whiteboard/whiteboardSlice";
 
 let socket;
@@ -126,6 +129,10 @@ export const connectWithSocketServer = (roomID, userID) => {
     console.error("❌ Socket reconnection failed:", error);
   });
 
+  socket.on("update-doubts", (doubts) => {
+    store.dispatch(setDoubts(doubts));
+  });
+
   socket.on("whiteboard-state", ({ slides, currentSlide, users }) => {
     // 1. Slides ko store me daalo
     // 1. Slides ko store me daalo — pass an object payload
@@ -150,9 +157,9 @@ export const connectWithSocketServer = (roomID, userID) => {
     store.dispatch(setUsers(newList));
   });
 
-  socket.on("payload-size", ({payloadSize}) => {
-    store.dispatch(setPayloadSize(payloadSize))
-  })
+  socket.on("payload-size", ({ payloadSize }) => {
+    store.dispatch(setPayloadSize(payloadSize));
+  });
 
   socket.on("user-disconnected", ({ userID: disconnectedUserId }) => {
     console.log(`User with ID ${disconnectedUserId} has disconnected.`);
@@ -524,7 +531,7 @@ export const emitElementUpdate = (
 
     // Emit payload size in KB (compressed size)
     const sizeKB = compressedUint8.length / 1024;
-    socket.emit("emit-payload", {sizeKB, roomID});
+    socket.emit("emit-payload", { sizeKB, roomID });
 
     console.log(
       `Emitted compressed element-update (id=${
@@ -620,6 +627,19 @@ export const emitMessages = ({ userID, message, roomID, messageCopy }) => {
     roomID: roomID,
     compressedMessage: btoa(String.fromCharCode(...compressed)),
   });
+};
+
+export const emitPostDoubt = (roomID, doubtText) => {
+  const doubtId = crypto.randomUUID(); // ya uuid library use kar sakte ho
+  store.dispatch(addDoubt({ doubt: doubtText, id: doubtId }));
+
+  socket.emit("post-doubt", { roomID, doubtText, doubtId });
+};
+
+// Upvote an existing doubt
+export const emitUpvoteDoubt = (roomID, doubtId) => {
+  store.dispatch(upvoteDoubt(doubtId));
+  socket.emit("upvote-doubt", { roomID, doubtId });
 };
 
 export const quiz = (pollData) => {

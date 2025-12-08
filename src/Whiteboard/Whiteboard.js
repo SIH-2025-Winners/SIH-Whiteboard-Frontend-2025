@@ -160,18 +160,17 @@ const Whiteboard = ({ role, userID, roomID }) => {
   const [pdfUrl, setPdfUrl] = useState(null);
   const [showPdfViewer, setShowPdfViewer] = useState(false);
 
+  useEffect(() => {
+    const handleTabClose = () => {
+      emitDisconnecting(roomID, userID);
+    };
 
-   useEffect(() => {
-      const handleTabClose = () => {
-        emitDisconnecting(roomID, userID);
-      };
-  
-      window.addEventListener("beforeunload", handleTabClose);
-  
-      return () => {
-        window.removeEventListener("beforeunload", handleTabClose);
-      };
-    }, [roomID, userID]);
+    window.addEventListener("beforeunload", handleTabClose);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleTabClose);
+    };
+  }, [roomID, userID]);
 
   // Set pencil as default tool for teachers
   useEffect(() => {
@@ -222,19 +221,14 @@ const Whiteboard = ({ role, userID, roomID }) => {
   }, [elements, slides, currentSlide]);
 
   useEffect(() => {
-    if (!file) {
-      return;
-    }
+    if (!file) return;
 
     let isPDF = true;
     let fileData = null;
     let fileName = null;
 
-    // Handle different file formats
     if (typeof file === "string") {
       fileData = file;
-      // isPDF = file.includes("application/pdf");
-      console.log("String format file, isPDF:", isPDF);
     } else if (file && typeof file === "object") {
       fileData = file.file || file.url;
       fileName = file.fileName;
@@ -242,23 +236,20 @@ const Whiteboard = ({ role, userID, roomID }) => {
         file.fileType === "application/pdf" ||
         (fileName && fileName.toLowerCase().endsWith(".pdf")) ||
         (fileData && fileData.includes("application/pdf"));
-      console.log("Object format file, isPDF:", isPDF, "fileName:", fileName);
     }
 
     if (isPDF) {
-      console.log("✅ PDF detected - setting up for viewing");
       setPdfUrl(fileData);
-      // For students, don't auto-open, show button instead
-      if (role === "student") {
-        setShowPdfViewer(true);
-      } else {
-        setShowPdf(true);
-      }
+
+      // ⭐ Auto-open PDF for both teacher & student
+      setShowPdf(true);
+      setShowPdfViewer(false);
+
       return;
     }
 
+    // Non-PDF download logic
     if (fileData && !isPDF) {
-      console.log("Non-PDF file - downloading");
       const link = document.createElement("a");
       link.href = fileData;
       link.download = fileName || "download";

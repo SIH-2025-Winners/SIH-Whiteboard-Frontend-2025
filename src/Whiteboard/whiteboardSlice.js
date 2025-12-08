@@ -7,6 +7,7 @@ const initialState = {
   currentSlide: 0, // 🆕 active slide index
   messages: [],
   users: [],
+  doubts: [], // doubts = [{doubt : "string", numberofdoubts: number}]
   payloadSize: "",
   cumulativePayloadSize: 0,
   quizAnswer: null,
@@ -72,6 +73,23 @@ const whiteboardSlice = createSlice({
       if (state.currentSlide >= state.slides.length) {
         state.currentSlide = Math.max(0, state.slides.length - 1);
       }
+    },
+
+    addDoubt: (state, action) => {
+      // action.payload = { doubt, id }
+      const newDoubt = { ...action.payload, votes: 1 }; // student jo post karta = 1 vote automatically
+      state.doubts.push(newDoubt);
+    },
+
+    upvoteDoubt: (state, action) => {
+      // action.payload = doubtId
+      const doubt = state.doubts.find((d) => d.id === action.payload);
+      if (doubt) doubt.votes += 1;
+    },
+
+    setDoubts: (state, action) => {
+      // replace all doubts (useful on room join)
+      state.doubts = action.payload;
     },
 
     // ==========================
@@ -161,11 +179,11 @@ const whiteboardSlice = createSlice({
       state.users = action.payload;
     },
 
-    startRecording : (state) => {
+    startRecording: (state) => {
       state.startRecording = true;
       state.recordingStartTime = Date.now();
     },
-    stopRecording : (state) => {
+    stopRecording: (state) => {
       state.startRecording = false;
       state.recordingStartTime = null;
     },
@@ -173,7 +191,7 @@ const whiteboardSlice = createSlice({
     setPayloadSize: (state, action) => {
       state.cumulativePayloadSize += action.payload;
       state.payloadSize = action.payload;
-    }
+    },
   },
 });
 
@@ -203,8 +221,11 @@ export const {
   stopRecording,
   startRecording,
 
+  setPayloadSize,
 
-  setPayloadSize
+  addDoubt,
+  upvoteDoubt,
+  setDoubts
 } = whiteboardSlice.actions;
 
 export default whiteboardSlice.reducer;
