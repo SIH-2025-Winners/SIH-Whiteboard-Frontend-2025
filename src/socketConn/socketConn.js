@@ -27,6 +27,14 @@ import {
 
 let socket;
 
+
+function getSizeInKB(obj) {
+  const json = JSON.stringify(obj);
+  const bytes = new Blob([json]).size;  // accurate byte length
+  return bytes / 1024; // KB
+}
+
+
 function dataURLtoBlob(dataurl) {
   const parts = dataurl.split(",");
   const mime = parts[0].match(/:(.*?);/)[1];
@@ -38,6 +46,8 @@ function dataURLtoBlob(dataurl) {
   }
   return new Blob([u8arr], { type: mime });
 }
+
+
 
 export const decompress = (data) => {
   try {
@@ -400,12 +410,21 @@ export const emitElementUpdate = (
   };
 
   console.log("Emitting element update:", completeElementData);
+  const sizeKB = getSizeInKB({
+    elementData: completeElementData,
+    roomID,
+    slideId,
+    slideIndex,
+  });
+
   socket.emit("element-update", {
     elementData: completeElementData,
     roomID,
     slideId,
     slideIndex,
   });
+
+  socket.emit("emit-payload", sizeKB);
 };
 
 export const emitImageElement = (

@@ -5465,7 +5465,8 @@ const WhiteboardPlayer = () => {
               maxWidth: '100%',
               height: 'auto',
               background: '#ffffff',
-              display: 'block'
+              display: 'block',
+              objectFit: "contain"
             }}
           />
         </div>
