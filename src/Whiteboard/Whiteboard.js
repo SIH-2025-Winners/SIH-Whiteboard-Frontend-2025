@@ -122,6 +122,9 @@ const Whiteboard = ({ role, userID, roomID }) => {
   // Touch/Mouse conflict prevention
   const [lastTouchTime, setLastTouchTime] = useState(0);
 
+  // Toolkit visibility state
+  const [isToolkitVisible, setIsToolkitVisible] = useState(false);
+
   // Undo/Redo state management
   const [history, setHistory] = useState([[]]);
   const [currentHistoryIndex, setCurrentHistoryIndex] = useState(0);
@@ -1610,6 +1613,8 @@ const Whiteboard = ({ role, userID, roomID }) => {
         isChatOpen={isChatOpen}
         onAISearchOpen={() => setAISearchOpen(true)}
         onPollOpen={() => setOpenPollModal(true)}
+        onToolkitToggle={() => setIsToolkitVisible(!isToolkitVisible)}
+        isToolkitVisible={isToolkitVisible}
       />
 
       {/* Undo/Redo Controls - Upper Right */}
@@ -1721,13 +1726,16 @@ const Whiteboard = ({ role, userID, roomID }) => {
 
       {role === "teacher" && (
         <>
-          <Menu
-            roomID={roomID}
-            onEraserClick={handleEraserDropdown}
-            onPencilClick={handlePencilDropdown}
-            onFillClick={handleFillDropdown}
-            onShapeClick={handleShapeDropdown}
-          />
+          {/* Only show Menu when toolkit is visible */}
+          {isToolkitVisible && (
+            <Menu
+              roomID={roomID}
+              onEraserClick={handleEraserDropdown}
+              onPencilClick={handlePencilDropdown}
+              onFillClick={handleFillDropdown}
+              onShapeClick={handleShapeDropdown}
+            />
+          )}
           {action === actions.WRITING ? (
             <textarea
               ref={textAreaRef}

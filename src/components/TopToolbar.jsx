@@ -12,7 +12,9 @@ const TopToolbar = ({
   onChatToggle, 
   onPollOpen, 
   sleptStudent,
-  isChatOpen = false
+  isChatOpen = false,
+  onToolkitToggle,
+  isToolkitVisible = false
 }) => {
   const dispatch = useDispatch();
   const isDarkTheme = useSelector((state) => state.whiteboard.isDarkTheme);
@@ -118,7 +120,7 @@ const TopToolbar = ({
             }}>
               <img 
                 src="/GyaanSetuIcon.jpeg" 
-                alt="GyaanSetu Logo" 
+                alt="Navshiksha Logo" 
                 style={{
                   width: '100%',
                   height: '100%',
@@ -159,6 +161,50 @@ const TopToolbar = ({
             </div>
           </div>
         </div>
+
+        {/* Center Section - Toolkit Toggle (Only for Teachers) */}
+        {role === 'teacher' && (
+          <button
+            onClick={onToolkitToggle}
+            style={{
+              ...buttonBaseStyle,
+              background: isToolkitVisible 
+                ? 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)'
+                : 'linear-gradient(135deg, #4b5563 0%, #6b7280 100%)',
+              color: theme.colors.white,
+              boxShadow: isToolkitVisible ? theme.shadow.lg : theme.shadow.md,
+              transform: isToolkitVisible ? 'translateY(-2px)' : 'translateY(0)',
+              border: `2px solid ${isToolkitVisible ? '#818cf8' : '#9ca3af'}`,
+            }}
+            onMouseEnter={(e) => {
+              if (!isToolkitVisible) {
+                e.target.style.background = 'linear-gradient(135deg, #6b7280 0%, #9ca3af 100%)';
+                e.target.style.transform = 'translateY(-2px)';
+                e.target.style.boxShadow = theme.shadow.lg;
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isToolkitVisible) {
+                e.target.style.background = 'linear-gradient(135deg, #4b5563 0%, #6b7280 100%)';
+                e.target.style.transform = 'translateY(0)';
+                e.target.style.boxShadow = theme.shadow.md;
+              }
+            }}
+            title={isToolkitVisible ? "Hide Drawing Toolkit" : "Show Drawing Toolkit"}
+          >
+            <img 
+              src="https://cdn-icons-png.flaticon.com/512/7168/7168912.png" 
+              alt="Toolkit Icon" 
+              style={{ 
+                width: '20px', 
+                height: '20px', 
+                filter: 'invert(1) brightness(2)',
+                marginRight: '8px'
+              }} 
+            />
+            {isToolkitVisible ? 'Hide Toolkit' : 'Show Toolkit'}
+          </button>
+        )}
 
         {/* Right Section - Action Buttons */}
         <div style={{ 

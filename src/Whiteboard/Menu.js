@@ -1,5 +1,4 @@
 "use client";
-import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import ShapeDropdown from "../components/ShapeDropdown";
@@ -194,7 +193,6 @@ const IconButton = ({
 
 const Menu = ({ roomID, onEraserClick, onPencilClick, onFillClick }) => {
   const dispatch = useDispatch();
-  const [expanded, setExpanded] = useState(false);
   const [showShapeDropdown, setShowShapeDropdown] = useState(false);
   const [shapeDropdownPosition, setShapeDropdownPosition] = useState({
     x: 0,
@@ -252,122 +250,41 @@ const Menu = ({ roomID, onEraserClick, onPencilClick, onFillClick }) => {
     toolTypes.CLOUD,
   ].includes(selectedToolType);
 
-  // Calculate dynamic widths based on content
-  const collapsedWidth = 160; // Reduced collapsed width
-
-  // Calculate expanded width with compact sizing
-  // ColorPicker: ~100px, Each tool button: ~36px + gap, Slide controls: ~280px, Clear button: ~36px
-  const toolCount = 9; // Shapes, Line, Eraser, Pencil, Text, Selection, Image, Fill, Clear
-  const toolWidth = 36; // Tool button width
-  const toolGap = 12; // Gap between tools
-  const colorPickerWidth = 100; // ColorPicker width
-  const slideControlsWidth = 280; // Add + Delete buttons + Dropdown
-  const clearButtonWidth = 36; // Clear button width
-  const padding = 16; // Container outer padding
-
-  const calculatedExpandedWidth =
-    colorPickerWidth +
-    toolCount * (toolWidth + toolGap) +
-    slideControlsWidth +
-    clearButtonWidth +
-    padding;
-
-  // Ensure the width doesn't exceed viewport width with some margin
-  const maxWidth =
-    typeof window !== "undefined"
-      ? Math.min(calculatedExpandedWidth, window.innerWidth - 40)
-      : calculatedExpandedWidth;
-  const expandedWidth = Math.max(maxWidth, 900); // Increased minimum to accommodate all controls
-
-  // Auto-close timer removed - user will manually close with X button
-
   const handleClearSlide = () => {
-    // 1️⃣ Redux store me current slide clear karo
     dispatch(clearSlide(currentSlideId));
-
-    // 2️⃣ Socket event emit karo taaki baki clients bhi clear ho jaye
     emitClearWhiteboard(roomID, currentSlideId);
-  };
-
-  const toggleExpand = () => {
-    setExpanded((prev) => !prev);
   };
 
   const menuContainerStyle = {
     position: "fixed",
-    top: "70px", // Adjusted to avoid overlap with TopToolbar
+    top: "70px",
     left: "50%",
     transform: "translateX(-50%)",
-    padding: expanded ? "6px 4px" : "6px 6px", // Minimal outer padding
+    padding: "6px 4px",
     backgroundColor: theme.colors.gray[800],
-    borderRadius: theme.borderRadius.md, // Smaller border radius
+    borderRadius: theme.borderRadius.md,
     boxShadow: theme.shadow.lg,
     border: `1px solid ${theme.colors.gray[600]}`,
-    zIndex: 999, // Below TopToolbar
-    height: expanded ? "auto" : "44px", // Reduced height
+    zIndex: 999,
     backdropFilter: "blur(10px)",
     background: "rgba(31, 41, 55, 0.95)",
   };
 
-  const collapsedContainerStyle = {
-    display: "flex",
-    justifyContent: "center",
-    gap: "6px", // Reduced gap
-    cursor: "pointer",
-    width: "100%", // Fill container width
-    minWidth: "160px", // Reduced minimum width
-    height: "32px", // Reduced height
-    alignItems: "center",
-    fontWeight: theme.typography.fontWeight.semibold,
-    fontSize: theme.typography.fontSize.sm, // Smaller font size
-    color: theme.colors.white,
-    borderRadius: theme.borderRadius.md, // Smaller border radius
-    border: `1px solid ${theme.colors.gray[600]}`,
-    userSelect: "none",
-    transition: `all ${theme.animation.duration.normal} ${theme.animation.easing.default}`,
-    background: `linear-gradient(135deg, ${theme.colors.gray[700]} 0%, ${theme.colors.gray[600]} 100%)`,
-  };
-
-  const expandedContentStyle = {
+  const contentStyle = {
     display: "flex",
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "flex-start", // Align to start to prevent squeezing
-    gap: theme.spacing.sm, // Reduced gap for more compact layout
-    padding: "0 8px", // Small horizontal padding
+    justifyContent: "flex-start",
+    gap: theme.spacing.sm,
+    padding: "0 8px",
     width: "100%",
-    flexWrap: "nowrap", // Prevent wrapping
-    overflow: "visible", // Allow overflow to be visible
+    flexWrap: "nowrap",
+    overflow: "visible",
   };
 
   return (
-    <motion.div
-      style={menuContainerStyle}
-      initial={{ width: collapsedWidth }}
-      animate={{ width: expanded ? expandedWidth : collapsedWidth }}
-      transition={{ type: "spring", stiffness: 300, damping: 30 }}
-    >
-      {!expanded ? (
-        <div
-          style={collapsedContainerStyle}
-          onClick={toggleExpand}
-          title="Expand Tools"
-        >
-          <img
-            src="https://cdn-icons-png.flaticon.com/512/7168/7168912.png"
-            alt="Palette Icon"
-            height={22}
-            width={22}
-            style={{
-              marginRight: "8px",
-              verticalAlign: "middle",
-              filter: "invert(1) brightness(2)",
-            }}
-          />
-          Drawing Toolkit
-        </div>
-      ) : (
-        <div style={expandedContentStyle}>
+    <div style={menuContainerStyle}>
+      <div style={contentStyle}>
           {/* Color Picker */}
           <ColorPicker />
 
@@ -566,45 +483,7 @@ const Menu = ({ roomID, onEraserClick, onPencilClick, onFillClick }) => {
               style={{ filter: "invert(1) brightness(2)" }}
             />
           </button>
-
-          {/* Close Button */}
-          <button
-            onClick={toggleExpand}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: "36px",
-              height: "36px",
-              border: `1px solid ${theme.colors.gray[600]}`,
-              borderRadius: theme.borderRadius.sm,
-              backgroundColor: theme.colors.gray[700],
-              cursor: "pointer",
-              transition: `all ${theme.animation.duration.normal} ${theme.animation.easing.default}`,
-              boxShadow: theme.shadow.sm,
-              marginLeft: "8px",
-            }}
-            title="Close Toolkit"
-            onMouseEnter={(e) => {
-              e.target.style.backgroundColor = theme.colors.gray[600];
-              e.target.style.transform = "translateY(-1px)";
-              e.target.style.boxShadow = theme.shadow.md;
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.backgroundColor = theme.colors.gray[700];
-              e.target.style.transform = "translateY(0)";
-              e.target.style.boxShadow = theme.shadow.sm;
-            }}
-          >
-            <span style={{ 
-              fontSize: "20px", 
-              lineHeight: "1", 
-              color: theme.colors.white,
-              fontWeight: "300"
-            }}>✕</span>
-          </button>
         </div>
-      )}
 
       {/* Shapes Dropdown */}
       {showShapeDropdown && (
@@ -613,7 +492,7 @@ const Menu = ({ roomID, onEraserClick, onPencilClick, onFillClick }) => {
           onClose={handleCloseShapeDropdown}
         />
       )}
-    </motion.div>
+    </div>
   );
 };
 
