@@ -73,7 +73,7 @@ function WhiteboardPage() {
   const mediaRecorderRef = useRef(null);
   const recordingRef = useRef(false);
   const [downloadUrl, setDownloadUrl] = useState(null);
-  const [isRecording, setIsRecording] = useState(true);
+  const isRecording = useSelector((state) => state.whiteboard.startRecording);
 
   useEffect(() => {
     connectWithSocketServer(data.roomID, data.userID);
@@ -372,7 +372,7 @@ function WhiteboardPage() {
     }
 
     recordingRef.current = true;
-    setIsRecording(true);
+    dispatch(startRecording());
 
     const recorder = new MediaRecorder(mixedStreamRef.current, {
       mimeType: "audio/webm"
