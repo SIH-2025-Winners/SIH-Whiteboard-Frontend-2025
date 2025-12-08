@@ -154,7 +154,7 @@ function WhiteboardPage() {
         });
       });
 
-      socket.on(" t", (reason) => {
+      socket.on("disconnect", (reason) => {
         console.log("❌ Socket disconnected:", reason);
       });
 
