@@ -9,10 +9,11 @@ const cursorSlice = createSlice({
   initialState,
   reducers: {
     updateCursorPosition: (state, action) => {
-      const { x, y, userId } = action.payload;
+      const { x, y, userID } = action.payload;
+      const userId = userID; // Ensure consistent naming
 
       const index = state.cursors.findIndex((c) => c.userId === userId);
-      console.log( `\n\n\ndhksabdhksadbasdajsdbaskdjbdaskdbask\n\n\n${state.cursors}\n\n\n\n\n`)
+      console.log( `\n\n\ndhksabdhksadbasdajsdbaskdjbdaskdbask\n\n\n${JSON.stringify(action.payload)}\n\n\n\n\n`)
 
       if (index !== -1) {
         state.cursors[index] = {

@@ -61,7 +61,8 @@ export const decompress = (data) => {
 };
 
 export const connectWithSocketServer = (roomID, userID) => {
-  socket = io("https://sih-whiteboard-backend-socket-2025.onrender.com", {
+  socket = io("http://localhost:3003", {
+    // https://sih-whiteboard-backend-socket-2025.onrender.com
     transports: ["websocket", "polling"],
     timeout: 20000,
     reconnection: true,
@@ -212,6 +213,7 @@ export const connectWithSocketServer = (roomID, userID) => {
   // Theme synchronization now handled via message system above
 
   socket.on("cursor-position-backend", (cursorData) => {
+    console.log(`\n\n\nCursor Data Received at socketConn.js : ${JSON.stringify(cursorData)}\n\n`);
     setTimeout(() => {
       store.dispatch(updateCursorPosition(cursorData));
     }, 350);

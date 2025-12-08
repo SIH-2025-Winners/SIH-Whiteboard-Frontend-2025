@@ -1,21 +1,14 @@
 import React, { useEffect, useRef, useState } from "react";
 import CursorOverlay from "../CursorOverlay/CursorOverlay";
-import {
-  connectWithSocketServer,
-  emitDisconnecting,
-  saveWhiteboardState,
-} from "../socketConn/socketConn";
+import { connectWithSocketServer, saveWhiteboardState } from "../socketConn/socketConn";
 import Whiteboard from "./Whiteboard";
 import { useLocation } from "react-router-dom";
 import io from "socket.io-client";
 import { useDispatch } from "react-redux";
-import {
-  startRecording as startRecordingInStore,
-  stopRecording as stopRecordingInStore,
-} from "./whiteboardSlice";
-import DraggableVideo from "../components/DraggableVideo";
+import { startRecording as startRecordingInStore, stopRecording as stopRecordingInStore } from "./whiteboardSlice";
 
-const AUDIO_SERVER_URL = "https://sih-audio-2025-backend.onrender.com";
+const AUDIO_SERVER_URL =
+  "https://sih-audio-2025-backend.onrender.com";
 
 // If your chunk-upload backend runs on a different origin, change this.
 const UPLOAD_SERVER_URL = "https://sih-audio-2025-backend.onrender.com";
@@ -28,8 +21,8 @@ const socketConfig = {
   reconnectionDelay: 2000,
   reconnectionAttempts: 5,
   maxReconnectionAttempts: 10,
-  transports: ["websocket", "polling"],
-  upgrade: true,
+  transports: ['websocket', 'polling'],
+  upgrade: true
 };
 
 const peerConfig = {
@@ -87,18 +80,10 @@ function WhiteboardPage() {
     // eslint-disable-next-line
   }, [data.roomID, data.userID]);
 
-  const toggleVideo = () => {
-    const videoTrack = localStreamRef.current?.getVideoTracks?.()[0];
-
-    if (!videoTrack) return;
-
-    videoTrack.enabled = !videoTrack.enabled;
-  };
-
   useEffect(() => {
     const joinRoom = async () => {
       try {
-        console.log("🎤 Requesting microphone access...");
+        console.log('🎤 Requesting microphone access...');
 
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: {
@@ -107,15 +92,16 @@ function WhiteboardPage() {
             sampleSize: 16,
             echoCancellation: true,
             noiseSuppression: true,
-            autoGainControl: true,
+            autoGainControl: true
           },
-          video: data.role === "teacher",
+          video: false,
         });
 
         localStreamRef.current = stream;
-        console.log("✅ Microphone access granted:", stream.getAudioTracks());
+        console.log('✅ Microphone access granted:', stream.getAudioTracks());
+
       } catch (error) {
-        console.error("❌ Microphone access denied:", error);
+        console.error('❌ Microphone access denied:', error);
         return;
       }
 
@@ -124,10 +110,7 @@ function WhiteboardPage() {
         setupAudioMixer();
       }
 
-      console.log(
-        "🔌 Attempting connection to audio server:",
-        AUDIO_SERVER_URL
-      );
+      console.log('🔌 Attempting connection to audio server:', AUDIO_SERVER_URL);
 
       const socket = io(AUDIO_SERVER_URL, socketConfig);
       audioSocketRef.current = socket;
@@ -138,7 +121,7 @@ function WhiteboardPage() {
 
       socket.on("connect", () => {
         connectionAttempts = 0; // Reset counter on successful connection
-        console.log("✅ Socket connected to audio server");
+        console.log('✅ Socket connected to audio server');
 
         socket.emit("join-room", {
           roomId: data.roomID,
@@ -146,28 +129,19 @@ function WhiteboardPage() {
           role: data.role,
         });
 
-        console.log("📡 Joining room:", {
-          roomId: data.roomID,
-          username: data.userID,
-          role: data.role,
-        });
+        console.log('📡 Joining room:', { roomId: data.roomID, username: data.userID, role: data.role });
       });
 
       socket.on("disconnect", (reason) => {
-        console.log("❌ Socket disconnected:", reason);
+        console.log('❌ Socket disconnected:', reason);
       });
 
       socket.on("connect_error", (error) => {
         connectionAttempts++;
-        console.error(
-          `❌ Socket connection error (attempt ${connectionAttempts}/${maxAttempts}):`,
-          error
-        );
+        console.error(`❌ Socket connection error (attempt ${connectionAttempts}/${maxAttempts}):`, error);
 
         if (connectionAttempts >= maxAttempts) {
-          console.error(
-            "🚫 Max connection attempts reached. Audio features disabled."
-          );
+          console.error('🚫 Max connection attempts reached. Audio features disabled.');
         }
       });
 
@@ -176,15 +150,15 @@ function WhiteboardPage() {
       });
 
       socket.on("reconnect_error", (error) => {
-        console.error("❌ Reconnection failed:", error);
+        console.error('❌ Reconnection failed:', error);
       });
 
       socket.on("reconnect_failed", () => {
-        console.error("🚫 All reconnection attempts failed");
+        console.error('🚫 All reconnection attempts failed');
       });
 
       socket.on("all-users", (users) => {
-        console.log("👥 All users received:", users);
+        console.log('👥 All users received:', users);
 
         users.forEach(({ userId, username: uname, role: urole }) => {
           setUsernames((prev) => ({ ...prev, [userId]: uname }));
@@ -272,10 +246,6 @@ function WhiteboardPage() {
         pc.addTrack(track, localStreamRef.current);
       });
 
-      if (data.role === "student") {
-        pc.addTransceiver("video", { direction: "recvonly" });
-      }
-
       pc.onicecandidate = (event) => {
         if (event.candidate) {
           audioSocketRef.current.emit("ice-candidate", {
@@ -288,8 +258,8 @@ function WhiteboardPage() {
       pc.ontrack = (event) => {
         const stream = event.streams[0];
         console.log(`🎵 Received remote stream from ${userId}:`, stream);
-        console.log("  - Active:", stream.active);
-        console.log("  - Audio tracks:", stream.getAudioTracks().length);
+        console.log('  - Active:', stream.active);
+        console.log('  - Audio tracks:', stream.getAudioTracks().length);
 
         setRemoteStreams((prev) => ({ ...prev, [userId]: stream }));
 
@@ -321,9 +291,7 @@ function WhiteboardPage() {
       // clean-up audio context & recorder if any
       try {
         stopRecording();
-      } catch (e) {
-        /* ignore */
-      }
+      } catch (e) { /* ignore */ }
       if (audioContextRef.current) {
         try {
           audioContextRef.current.close();
@@ -354,18 +322,14 @@ function WhiteboardPage() {
     if (data.role !== "teacher") return;
     if (audioContextRef.current) return; // Avoid duplicates
 
-    audioContextRef.current = new (window.AudioContext ||
-      window.webkitAudioContext)();
-    destinationRef.current =
-      audioContextRef.current.createMediaStreamDestination();
+    audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+    destinationRef.current = audioContextRef.current.createMediaStreamDestination();
     mixedStreamRef.current = destinationRef.current.stream;
 
     // Add teacher’s mic
     if (localStreamRef.current) {
       try {
-        const micSource = audioContextRef.current.createMediaStreamSource(
-          localStreamRef.current
-        );
+        const micSource = audioContextRef.current.createMediaStreamSource(localStreamRef.current);
         micSource.connect(destinationRef.current);
       } catch (err) {
         console.warn("Failed to add teacher mic to mixer:", err);
@@ -392,19 +356,14 @@ function WhiteboardPage() {
     if (data.role !== "teacher") return;
     dispatch(startRecordingInStore());
     if (!mixedStreamRef.current) {
-      console.error(
-        "No mixed stream available — ensure mixer is setup and remote streams have been added."
-      );
+      console.error("No mixed stream available — ensure mixer is setup and remote streams have been added.");
       // Try to initialize if not done
       setupAudioMixer();
       if (!mixedStreamRef.current) return;
     }
 
     // resume audio context on user interaction if needed
-    if (
-      audioContextRef.current &&
-      audioContextRef.current.state === "suspended"
-    ) {
+    if (audioContextRef.current && audioContextRef.current.state === "suspended") {
       try {
         await audioContextRef.current.resume();
       } catch (e) {
@@ -416,7 +375,7 @@ function WhiteboardPage() {
     setIsRecording(true);
 
     const recorder = new MediaRecorder(mixedStreamRef.current, {
-      mimeType: "audio/webm",
+      mimeType: "audio/webm"
     });
 
     recorder.ondataavailable = async (e) => {
@@ -425,27 +384,15 @@ function WhiteboardPage() {
       try {
         const arrayBuffer = await e.data.arrayBuffer();
         // convert to base64
-        const base64 = btoa(
-          String.fromCharCode(...new Uint8Array(arrayBuffer))
-        );
+        const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
 
         // POST chunk to upload server
-        const responseofAudio = await fetch(
-          `${UPLOAD_SERVER_URL}/upload-chunk`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              roomId: data.roomID,
-              chunk: base64,
-              classId: data.classID,
-            }),
-          }
-        );
-        console.log(
-          "Chunk uploaded, server response:",
-          await responseofAudio.text()
-        );
+        const responseofAudio = await fetch(`${UPLOAD_SERVER_URL}/upload-chunk`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ roomId: data.roomID, chunk: base64, classId: data.classID })
+        });
+        console.log("Chunk uploaded, server response:", await responseofAudio.text());
       } catch (err) {
         console.error("Failed to upload chunk:", err);
       }
@@ -488,6 +435,8 @@ function WhiteboardPage() {
 
   // ----------------------------------------------------------------------
 
+
+  
   // data.classID --> sent to audio server
   return (
     <div
@@ -495,56 +444,6 @@ function WhiteboardPage() {
         width: "10vw",
       }}
     >
-      {data.role === "teacher" && (
-        <DraggableVideo>
-          <video
-            autoPlay
-            muted
-            playsInline
-            ref={(el) => {
-              if (el && localStreamRef.current) {
-                el.srcObject = localStreamRef.current;
-              }
-            }}
-            style={{
-              bottom: "20px",
-              left: "20px",
-              width: "190px",
-              height: "130px",
-              borderRadius: "12px",
-              objectFit: "cover",
-              zIndex: 9999,
-              backgroundColor: "black",
-            }}
-          />
-        </DraggableVideo>
-      )}
-
-      {data.role === "student" &&
-        Object.entries(remoteStreams).map(([id, stream]) =>
-          roles[id] === "teacher" ? (
-            <DraggableVideo>
-              <video
-                key={id}
-                autoPlay
-                playsInline
-                ref={(el) => {
-                  if (el) el.srcObject = stream;
-                }}
-                style={{
-                  bottom: "20px",
-                  left: "20px",
-                  width: "190px",
-                  height: "130px",
-                  borderRadius: "12px",
-                  objectFit: "cover",
-                  zIndex: 9999,
-                  backgroundColor: "black",
-                }}
-              />
-            </DraggableVideo>
-          ) : null
-        )}
       <Whiteboard role={data.role} userID={data.userID} roomID={data.roomID} />
       <CursorOverlay />
       <div
@@ -646,38 +545,23 @@ function WhiteboardPage() {
                 {data.role === "teacher" && (
                   <>
                     {!isRecording ? (
-                      <div>
-                        <button
-                          onClick={() => {
-                            // ensure mixer exists
-                            setupAudioMixer();
-                            startRecording();
-                          }}
-                          style={{
-                            padding: "5px 12px",
-                            borderRadius: "5px",
-                            border: "1px solid #007bff",
-                            backgroundColor: "#007bff",
-                            color: "white",
-                            cursor: "pointer",
-                          }}
-                        >
-                          Start Recording
-                        </button>
-                        <button
-                          onClick={toggleVideo}
-                          style={{
-                            padding: "5px 12px",
-                            borderRadius: "5px",
-                            border: "1px solid #007bff",
-                            backgroundColor: "#007bff",
-                            color: "white",
-                            cursor: "pointer",
-                          }}
-                        >
-                          Toggle Video
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => {
+                          // ensure mixer exists
+                          setupAudioMixer();
+                          startRecording();
+                        }}
+                        style={{
+                          padding: "5px 12px",
+                          borderRadius: "5px",
+                          border: "1px solid #007bff",
+                          backgroundColor: "#007bff",
+                          color: "white",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Start Recording
+                      </button>
                     ) : (
                       <button
                         onClick={() => stopRecording()}
@@ -696,13 +580,9 @@ function WhiteboardPage() {
                   </>
                 )}
               </div>
-              <button
-                onClick={() => {
-                  saveWhiteboardState(data.roomID);
-                }}
-              >
-                Save all
-              </button>
+              <button onClick={() => {
+                saveWhiteboardState(data.roomID)
+              }}>Save all</button>
             </div>
 
             {/* Remote Participants */}
