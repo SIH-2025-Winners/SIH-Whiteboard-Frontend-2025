@@ -15,10 +15,10 @@ import {
 } from "./whiteboardSlice";
 import DraggableVideo from "../components/DraggableVideo";
 
-const AUDIO_SERVER_URL = "http://localhost:3001";
+const AUDIO_SERVER_URL = "https://sih-audio-2025-backend.onrender.com";
 
 // If your chunk-upload backend runs on a different origin, change this.
-const UPLOAD_SERVER_URL = "http://localhost:3001";
+const UPLOAD_SERVER_URL = "https://sih-audio-2025-backend.onrender.com";
 
 // Socket.IO configuration with retry logic
 const socketConfig = {
