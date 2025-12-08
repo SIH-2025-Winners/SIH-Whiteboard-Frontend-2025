@@ -7,6 +7,8 @@ const initialState = {
   currentSlide: 0, // 🆕 active slide index
   messages: [],
   users: [],
+  payloadSize: "",
+  cumulativePayloadSize: 0,
   quizAnswer: null,
   pollData: null,
   selectedColor: "#000000",
@@ -167,6 +169,11 @@ const whiteboardSlice = createSlice({
       state.startRecording = false;
       state.recordingStartTime = null;
     },
+
+    setPayloadSize: (state, action) => {
+      state.cumulativePayloadSize += action.payload;
+      state.payloadSize = action.payload;
+    }
   },
 });
 
@@ -194,7 +201,10 @@ export const {
   setSelectedColor,
 
   stopRecording,
-  startRecording
+  startRecording,
+
+
+  setPayloadSize
 } = whiteboardSlice.actions;
 
 export default whiteboardSlice.reducer;

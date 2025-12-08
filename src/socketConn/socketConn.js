@@ -16,6 +16,7 @@ import {
   removeElement,
   setElementsForSlide,
   setMessages,
+  setPayloadSize,
   setPollData,
   setQuizAnswer,
   setUsers,
@@ -28,13 +29,11 @@ import {
 let socket;
 const socket_server = process.env.NEXT_PUBLIC_SOCKET_SERVER;
 
-
 function getSizeInKB(obj) {
   const json = JSON.stringify(obj);
-  const bytes = new Blob([json]).size;  // accurate byte length
+  const bytes = new Blob([json]).size; // accurate byte length
   return bytes / 1024; // KB
 }
-
 
 function dataURLtoBlob(dataurl) {
   const parts = dataurl.split(",");
@@ -48,12 +47,42 @@ function dataURLtoBlob(dataurl) {
   return new Blob([u8arr], { type: mime });
 }
 
+// export const decompress = (data) => {
+//   try {
+//     const binary = Uint8Array.from(atob(data), (c) => c.charCodeAt(0));
+//     const uncompressed = pako.inflate(binary, { to: "string" });
+//     return JSON.parse(uncompressed);
+//   } catch (e) {
+//     console.error("Decompression error:", e);
+//     return [];
+//   }
+// };
 
-
+// improved decompress (frontend)
 export const decompress = (data) => {
   try {
-    const binary = Uint8Array.from(atob(data), (c) => c.charCodeAt(0));
-    const uncompressed = pako.inflate(binary, { to: "string" });
+    let uint8;
+    if (!data) return [];
+
+    if (typeof data === "string") {
+      // base64 (older format)
+      const binary = atob(data);
+      const arr = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) arr[i] = binary.charCodeAt(i);
+      uint8 = arr;
+    } else if (data instanceof Uint8Array) {
+      uint8 = data;
+    } else if (Array.isArray(data)) {
+      uint8 = Uint8Array.from(data);
+    } else if (data.buffer && data.buffer instanceof ArrayBuffer) {
+      // e.g. Node Buffer-like object
+      uint8 = new Uint8Array(data.buffer);
+    } else {
+      console.warn("decompress: unknown compressed format", data);
+      return [];
+    }
+
+    const uncompressed = pako.inflate(uint8, { to: "string" });
     return JSON.parse(uncompressed);
   } catch (e) {
     console.error("Decompression error:", e);
@@ -62,7 +91,7 @@ export const decompress = (data) => {
 };
 
 export const connectWithSocketServer = (roomID, userID) => {
-  socket = io(`https://sih-whiteboard-backend-socket-2025.onrender.com`, {
+  socket = io(`http://localhost:3003`, {
     // https://sih-whiteboard-backend-socket-2025.onrender.com
     transports: ["websocket", "polling"],
     timeout: 20000,
@@ -121,9 +150,13 @@ export const connectWithSocketServer = (roomID, userID) => {
     store.dispatch(setUsers(newList));
   });
 
+  socket.on("payload-size", ({payloadSize}) => {
+    store.dispatch(setPayloadSize(payloadSize))
+  })
+
   socket.on("user-disconnected", ({ userID: disconnectedUserId }) => {
     console.log(`User with ID ${disconnectedUserId} has disconnected.`);
-    store.dispatch(removeCursorPosition({userId: disconnectedUserId}));
+    store.dispatch(removeCursorPosition({ userId: disconnectedUserId }));
   });
 
   socket.on("slide-created", ({ slide, currentSlide }) => {
@@ -172,36 +205,94 @@ export const connectWithSocketServer = (roomID, userID) => {
     );
   });
 
-  socket.on("element-updated", ({ elementData, slideId, slideIndex }) => {
-    console.log("Client received element:", elementData.type, elementData.id);
-    if (elementData.type === "image") {
-      console.log(
-        "Received image:",
-        elementData.src,
-        elementData.width,
-        elementData.height
-      );
-    }
-    store.dispatch(
-      updateElementInStore({
-        elementData,
-        slideId,
-        slideIndex,
-      })
-    );
-  });
+  // socket.on("element-updated", ({ elementData, slideId, slideIndex }) => {
+  //   console.log("Client received element:", elementData.type, elementData.id);
+  //   if (elementData.type === "image") {
+  //     console.log(
+  //       "Received image:",
+  //       elementData.src,
+  //       elementData.width,
+  //       elementData.height
+  //     );
+  //   }
+  //   store.dispatch(
+  //     updateElementInStore({
+  //       elementData,
+  //       slideId,
+  //       slideIndex,
+  //     })
+  //   );
+  // });
 
   // Add this new socket listener for element removal
+
+  // Replace existing listener
+  socket.on(
+    "element-updated",
+    ({ elementData, compressedElementData, slideId, slideIndex }) => {
+      try {
+        if (compressedElementData) {
+          const decompressedElement = (() => {
+            try {
+              return decompress(compressedElementData);
+            } catch (e) {
+              console.error(
+                "Failed to decompress incoming element-updated:",
+                e
+              );
+              return null;
+            }
+          })();
+
+          if (decompressedElement) {
+            console.log(
+              "Received compressed element-updated -> decompressed:",
+              decompressedElement.type,
+              decompressedElement.id
+            );
+            store.dispatch(
+              updateElementInStore({
+                elementData: decompressedElement,
+                slideId,
+                slideIndex,
+              })
+            );
+            return;
+          }
+        }
+
+        // Fallback: old behavior (raw elementData)
+        if (elementData) {
+          console.log(
+            "Client received element:",
+            elementData.type,
+            elementData.id
+          );
+          store.dispatch(
+            updateElementInStore({
+              elementData,
+              slideId,
+              slideIndex,
+            })
+          );
+        }
+      } catch (err) {
+        console.error("Error handling element-updated:", err);
+      }
+    }
+  );
 
   socket.on("element-removal", ({ elementId, slideId }) => {
     console.log(`ℹ Removing element ${elementId} from slide ${slideId}`);
     store.dispatch(removeElement({ elementId, slideId }));
   });
 
-  socket.on("disconnect-and-remove-cursor", ({userID}) => {
-    console.log(`\n\n\nRemoving cursor and emitting on line 190 in socketConn.js file \n\n\n\n`);
+  socket.on("disconnect-and-remove-cursor", ({ userID }) => {
+    console.log(
+      `\n\n\nRemoving cursor and emitting on line 190 in socketConn.js file \n\n\n\n`
+    );
     store.dispatch(removeCursorPosition(userID));
-  })
+  });
 
   socket.on("whiteboard-clear", ({ scope, slideId }) => {
     if (scope === "all") {
@@ -214,7 +305,11 @@ export const connectWithSocketServer = (roomID, userID) => {
   // Theme synchronization now handled via message system above
 
   socket.on("cursor-position-backend", (cursorData) => {
-    console.log(`\n\n\nCursor Data Received at socketConn.js : ${JSON.stringify(cursorData)}\n\n`);
+    console.log(
+      `\n\n\nCursor Data Received at socketConn.js : ${JSON.stringify(
+        cursorData
+      )}\n\n`
+    );
     setTimeout(() => {
       store.dispatch(updateCursorPosition(cursorData));
     }, 350);
@@ -394,40 +489,58 @@ export const connectWithSocketServer = (roomID, userID) => {
   });
 };
 
+// front-end: socketConn.js (replace emitElementUpdate)
 export const emitElementUpdate = (
   elementData,
   roomID,
   slideId = null,
   slideIndex = null
 ) => {
-  console.log(`\n\n\n\nElement DAta : \n\n ${JSON.stringify(elementData)}`);
-  // Ensure all properties are preserved, especially for images
-  const completeElementData = {
-    ...elementData,
-    // Explicitly preserve image source and dimensions if it exists
-    ...(elementData.type === "image" && {
-      src: elementData.src,
-      width: elementData.width,
-      height: elementData.height,
-    }),
-  };
+  try {
+    // Ensure all properties are preserved, especially for images
+    const completeElementData = {
+      ...elementData,
+      ...(elementData.type === "image" && {
+        src: elementData.src,
+        width: elementData.width,
+        height: elementData.height,
+      }),
+    };
 
-  console.log("Emitting element update:", completeElementData);
-  const sizeKB = getSizeInKB({
-    elementData: completeElementData,
-    roomID,
-    slideId,
-    slideIndex,
-  });
+    // JSON -> compress using pako
+    const json = JSON.stringify(completeElementData);
+    const compressedUint8 = pako.deflate(json); // Uint8Array
 
-  socket.emit("element-update", {
-    elementData: completeElementData,
-    roomID,
-    slideId,
-    slideIndex,
-  });
+    // Option A: send raw Uint8Array as Array (JSON serializable)
+    const compressedArray = Array.from(compressedUint8);
 
-  socket.emit("emit-payload", sizeKB);
+    // Emit compressed payload
+    socket.emit("element-update", {
+      compressedElementData: compressedArray,
+      roomID,
+      slideId,
+      slideIndex,
+    });
+
+    // Emit payload size in KB (compressed size)
+    const sizeKB = compressedUint8.length / 1024;
+    socket.emit("emit-payload", {sizeKB, roomID});
+
+    console.log(
+      `Emitted compressed element-update (id=${
+        completeElementData.id
+      }) size: ${sizeKB.toFixed(2)} KB`
+    );
+  } catch (err) {
+    console.error("Failed to compress/emit element update:", err);
+    // fallback: send raw (keeps backward compatibility)
+    socket.emit("element-update", {
+      elementData,
+      roomID,
+      slideId,
+      slideIndex,
+    });
+  }
 };
 
 export const emitImageElement = (

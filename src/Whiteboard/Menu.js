@@ -203,6 +203,9 @@ const Menu = ({ roomID, onEraserClick, onPencilClick, onFillClick }) => {
   const selectedToolType = useSelector((state) => state.whiteboard.tool);
   const slides = useSelector((state) => state.whiteboard.slides);
   const currentSlide = useSelector((state) => state.whiteboard.currentSlide);
+ 
+
+
   const currentSlideId = useSelector(
     (state) => state.whiteboard.currentSlideId
   );
