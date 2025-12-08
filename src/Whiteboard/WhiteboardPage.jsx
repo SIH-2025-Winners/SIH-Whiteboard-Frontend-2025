@@ -13,6 +13,7 @@ import {
   startRecording as startRecordingInStore,
   stopRecording as stopRecordingInStore,
 } from "./whiteboardSlice";
+import DraggableVideo from "../components/DraggableVideo";
 
 const AUDIO_SERVER_URL = "http://localhost:3001";
 
@@ -80,8 +81,6 @@ function WhiteboardPage() {
   const recordingRef = useRef(false);
   const [downloadUrl, setDownloadUrl] = useState(null);
   const [isRecording, setIsRecording] = useState(true);
-
- 
 
   useEffect(() => {
     connectWithSocketServer(data.roomID, data.userID);
@@ -497,51 +496,53 @@ function WhiteboardPage() {
       }}
     >
       {data.role === "teacher" && (
-        <video
-          autoPlay
-          muted
-          playsInline
-          ref={(el) => {
-            if (el && localStreamRef.current) {
-              el.srcObject = localStreamRef.current;
-            }
-          }}
-          style={{
-            position: "fixed",
-            bottom: "20px",
-            left: "20px",
-            width: "240px",
-            height: "180px",
-            borderRadius: "12px",
-            objectFit: "cover",
-            zIndex: 9999,
-            backgroundColor: "black",
-          }}
-        />
+        <DraggableVideo>
+          <video
+            autoPlay
+            muted
+            playsInline
+            ref={(el) => {
+              if (el && localStreamRef.current) {
+                el.srcObject = localStreamRef.current;
+              }
+            }}
+            style={{
+              bottom: "20px",
+              left: "20px",
+              width: "190px",
+              height: "130px",
+              borderRadius: "12px",
+              objectFit: "cover",
+              zIndex: 9999,
+              backgroundColor: "black",
+            }}
+          />
+        </DraggableVideo>
       )}
 
       {data.role === "student" &&
         Object.entries(remoteStreams).map(([id, stream]) =>
           roles[id] === "teacher" ? (
-            <video
-              key={id}
-              autoPlay
-              playsInline
-              ref={(el) => {
-                if (el) el.srcObject = stream;
-              }}
-              style={{
-                position: "fixed",
-                bottom: "20px",
-                left: "20px",
-                width: "240px",
-                height: "180px",
-                borderRadius: "12px",
-                objectFit: "cover",
-                zIndex: 9999,
-                backgroundColor: "black",
-              }}
-            />
+            <DraggableVideo>
+              <video
+                key={id}
+                autoPlay
+                playsInline
+                ref={(el) => {
+                  if (el) el.srcObject = stream;
+                }}
+                style={{
+                  bottom: "20px",
+                  left: "20px",
+                  width: "190px",
+                  height: "130px",
+                  borderRadius: "12px",
+                  objectFit: "cover",
+                  zIndex: 9999,
+                  backgroundColor: "black",
+                }}
+              />
+            </DraggableVideo>
           ) : null
         )}
       <Whiteboard role={data.role} userID={data.userID} roomID={data.roomID} />
