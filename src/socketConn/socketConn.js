@@ -26,6 +26,7 @@ import {
 } from "../Whiteboard/whiteboardSlice";
 
 let socket;
+const socket_server = process.env.NEXT_PUBLIC_SOCKET_SERVER;
 
 
 function getSizeInKB(obj) {
@@ -61,7 +62,7 @@ export const decompress = (data) => {
 };
 
 export const connectWithSocketServer = (roomID, userID) => {
-  socket = io("http://localhost:3003", {
+  socket = io(`https://sih-whiteboard-backend-socket-2025.onrender.com`, {
     // https://sih-whiteboard-backend-socket-2025.onrender.com
     transports: ["websocket", "polling"],
     timeout: 20000,
