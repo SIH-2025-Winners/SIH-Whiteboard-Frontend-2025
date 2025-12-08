@@ -4,7 +4,7 @@ import { connectWithSocketServer, saveWhiteboardState } from "../socketConn/sock
 import Whiteboard from "./Whiteboard";
 import { useLocation } from "react-router-dom";
 import io from "socket.io-client";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { startRecording as startRecordingInStore, stopRecording as stopRecordingInStore } from "./whiteboardSlice";
 
 const AUDIO_SERVER_URL =
@@ -420,7 +420,7 @@ function WhiteboardPage() {
       }
       mediaRecorderRef.current = null;
     }
-    setIsRecording(false);
+    dispatch(stopRecordingInStore());
     console.log("Recording stopped.");
   };
 
