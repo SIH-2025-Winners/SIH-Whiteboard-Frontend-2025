@@ -38,6 +38,18 @@ function getSizeInKB(obj) {
   return bytes / 1024; // KB
 }
 
+const incomingPdfStore = {};
+
+function base64ToUint8Array(base64) {
+  const binary = atob(base64);
+  const len = binary.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
 function dataURLtoBlob(dataurl) {
   const parts = dataurl.split(",");
   const mime = parts[0].match(/:(.*?);/)[1];
@@ -94,7 +106,7 @@ export const decompress = (data) => {
 };
 
 export const connectWithSocketServer = (roomID, userID) => {
-  socket = io(`http://localhost:3003`, {
+  socket = io(`https://sih-whiteboard-backend-socket-2025.onrender.com`, {
     // https://sih-whiteboard-backend-socket-2025.onrender.com
     transports: ["websocket", "polling"],
     timeout: 20000,
@@ -292,6 +304,80 @@ export const connectWithSocketServer = (roomID, userID) => {
   socket.on("element-removal", ({ elementId, slideId }) => {
     console.log(`ℹ Removing element ${elementId} from slide ${slideId}`);
     store.dispatch(removeElement({ elementId, slideId }));
+  });
+
+  socket.on("pdf-upload-start", ({ key, fileName, fileType, totalChunks }) => {
+    incomingPdfStore[key] = {
+      chunks: new Array(totalChunks),
+      totalChunks,
+      fileType,
+      fileName,
+      receivedCount: 0,
+    };
+    console.log("Init incoming PDF store for", key, totalChunks);
+  });
+
+  socket.on("pdf-chunk-forward", (payload) => {
+    const { key, chunkIndex, totalChunks, chunkBase64, fileType, fileName } =
+      payload;
+
+    if (!incomingPdfStore[key]) {
+      // initialize if start wasn't received for some reason
+      incomingPdfStore[key] = {
+        chunks: new Array(totalChunks),
+        totalChunks,
+        fileType,
+        fileName,
+        receivedCount: 0,
+      };
+    }
+
+    const storeEntry = incomingPdfStore[key];
+    if (!storeEntry.chunks[chunkIndex]) {
+      const bytes = base64ToUint8Array(chunkBase64);
+      storeEntry.chunks[chunkIndex] = bytes;
+      storeEntry.receivedCount += 1;
+    }
+
+    console.log(
+      `Received chunk ${storeEntry.receivedCount}/${storeEntry.totalChunks} for ${key}`
+    );
+
+    // Option: emit acks back to server if needed
+
+    if (storeEntry.receivedCount === storeEntry.totalChunks) {
+      // assemble
+      const parts = storeEntry.chunks;
+      const totalLength = parts.reduce((s, p) => s + p.length, 0);
+      const merged = new Uint8Array(totalLength);
+      let offset = 0;
+      for (let i = 0; i < parts.length; i++) {
+        merged.set(parts[i], offset);
+        offset += parts[i].length;
+      }
+
+      // create blob and object URL
+      const blob = new Blob([merged.buffer], {
+        type: storeEntry.fileType || "application/pdf",
+      });
+      const blobUrl = URL.createObjectURL(blob);
+
+      // Dispatch to Redux so PdfViewer picks it up
+      // setFile accepts object or string: fileSlice handles both. We'll send object:
+      store.dispatch(
+        setFile({
+          file: blobUrl,
+          url: blobUrl,
+          fileName: storeEntry.fileName,
+          fileType: storeEntry.fileType,
+        })
+      );
+
+      console.log("Full PDF reconstructed and dispatched:", key);
+
+      // Optional: free memory
+      delete incomingPdfStore[key];
+    }
   });
 
   socket.on("disconnect-and-remove-cursor", ({ userID }) => {
@@ -708,6 +794,12 @@ export const emitFile = ({ roomID, file }) => {
   const reader = new FileReader();
 
   reader.onload = () => {
+    // socket.emit("upload-pdf-start", {
+    //   roomID,
+    //   fileName,
+    //   fileType,
+    //   totalChunks,
+    // });
     const arrayBuffer = reader.result;
     const uint8 = new Uint8Array(arrayBuffer);
 

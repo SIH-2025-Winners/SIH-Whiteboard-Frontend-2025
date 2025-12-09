@@ -30,7 +30,7 @@ function dataURLtoBlob(dataurl) {
 
 const PdfViewer = () => {
   // ✅ Get the entire file state and handle multiple formats
-  const fileState = useSelector((state) => state.file.file);
+  const fileState = useSelector((state) => state.file);
   const [pdfURL, setPdfURL] = useState(null);
   const defaultLayoutPluginInstance = defaultLayoutPlugin();
 

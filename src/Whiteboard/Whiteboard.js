@@ -129,7 +129,7 @@ const Whiteboard = ({ role, userID, roomID }) => {
 
   // Redux state
   const dispatch = useDispatch();
-  const file = useSelector((state) => state.file.file);
+  const file = useSelector((state) => state.file);
   const toolType = useSelector((state) => state.whiteboard.tool);
   const selectedColor = useSelector((state) => state.whiteboard.selectedColor);
   // const elements = useSelector((state) => state.whiteboard.elements);
@@ -158,7 +158,7 @@ const Whiteboard = ({ role, userID, roomID }) => {
   const [openImageModel, setOpenImageModel] = useState();
   const [imageUrl, setImageUrl] = useState();
   const [pdfUrl, setPdfUrl] = useState(null);
-  const [showPdfViewer, setShowPdfViewer] = useState(false);
+  const [showPdfViewer, setShowPdfViewer] = useState(true);
 
   useEffect(() => {
     const handleTabClose = () => {
@@ -278,6 +278,7 @@ const Whiteboard = ({ role, userID, roomID }) => {
       // Blackboard mode - dark background
       ctx.fillStyle = "#1f2937"; // Dark gray background
       ctx.fillRect(0, 0, canvas.width, canvas.height);
+      console.log(`\n\ncanvas width and height: ${canvas.width} , ${canvas.height}`);
     } else {
       // Whiteboard mode - light background
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -2043,17 +2044,18 @@ const Whiteboard = ({ role, userID, roomID }) => {
       {role === "student" && showPdfViewer && pdfUrl && (
         <div
           style={{
-            position: "fixed",
-            top: "20px",
+            position: "relative",
+            top: "50%",
             right: "20px",
-            zIndex: 1000,
+            zIndex: 9999,
             backgroundColor: "#ffffff",
             padding: "12px 16px",
             borderRadius: "8px",
             boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
             border: "1px solid #e5e7eb",
-            display: "none", // HIDDEN - PDF functionality preserved for later use
+             // HIDDEN - PDF functionality preserved for later use
             alignItems: "center",
+            display: "flex",
             gap: "12px",
           }}
         >
@@ -2552,56 +2554,56 @@ const Whiteboard = ({ role, userID, roomID }) => {
             top: "50%",
             left: "50%",
             transform: "translate(-50%, -50%)",
-            width: "90vw",
-            maxWidth: "1200px",
-            height: "80vh",
+            width: "45vw",
+            maxWidth: "1100px",
+            height: "85vh",
             backgroundColor: "#ffffff",
-            borderRadius: "12px",
-            boxShadow: "0 20px 40px rgba(0, 0, 0, 0.2)",
-            border: "1px solid #e5e7eb",
+            borderRadius: "14px",
+            boxShadow: "0 8px 30px rgba(0, 0, 0, 0.15)",
+            border: "1px solid #e2e8f0",
             zIndex: 1000,
             display: "flex",
             flexDirection: "column",
             overflow: "hidden",
           }}
         >
-          {/* PDF Viewer Header */}
+          {/* Header */}
           <div
             style={{
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
-              padding: "16px 20px",
+              padding: "14px 22px",
               borderBottom: "1px solid #e5e7eb",
-              backgroundColor: "#f8fafc",
+              backgroundColor: "#f9fafb",
             }}
           >
             <h3
               style={{
-                margin: "0",
+                margin: 0,
                 fontSize: "18px",
-                fontWeight: "600",
-                color: "#111827",
+                fontWeight: 600,
+                color: "#1e293b",
               }}
             >
-              {file && file.fileName ? file.fileName : "PDF Document"}
+              {file?.fileName || "PDF Document"}
             </h3>
+
             <button
               onClick={() => {
                 setShowPdf(false);
                 dispatch(clearFile());
               }}
               style={{
-                padding: "8px 16px",
+                padding: "8px 14px",
                 backgroundColor: "#ef4444",
-                color: "#ffffff",
+                color: "#fff",
                 border: "none",
                 borderRadius: "8px",
-                fontSize: "14px",
-                fontWeight: "500",
                 cursor: "pointer",
-                transition: "all 0.2s ease",
-                boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
+                fontSize: "14px",
+                fontWeight: 500,
+                transition: "0.2s ease",
               }}
               onMouseEnter={(e) => (e.target.style.backgroundColor = "#dc2626")}
               onMouseLeave={(e) => (e.target.style.backgroundColor = "#ef4444")}
@@ -2610,36 +2612,49 @@ const Whiteboard = ({ role, userID, roomID }) => {
             </button>
           </div>
 
-          {/* PDF Viewer Content */}
+          {/* Body */}
           <div
             style={{
-              flex: "1",
+              flex: 1,
               display: "flex",
               flexDirection: "column",
-              padding: "20px",
-              gap: "16px",
+              padding: "18px",
               overflow: "auto",
+              gap: "16px",
             }}
           >
-            <div style={{ flex: "2", minHeight: "400px" }}>
+            {/* PDF Viewer */}
+            <div
+              style={{
+                flex: 3,
+                minHeight: "450px",
+                borderRadius: "10px",
+                border: "1px solid #e5e7eb",
+                overflow: "hidden",
+                boxShadow: "0 2px 6px rgba(0, 0, 0, 0.05)",
+              }}
+            >
               <PdfViewer />
             </div>
 
-            <div
-              style={{
-                flex: "1",
-                display: "flex",
-                flexDirection: "column",
-                gap: "12px",
-              }}
-            >
-              <WebsiteShareControl
-                roomID={roomID}
-                userID={userID}
-                isTeacher={role === "teacher"}
-              />
-              {/* <WebsiteDisplay roomID={roomID} userID={userID} /> */}
-            </div>
+            {/* Website Controls — COMMENTED */}
+            {/*
+    <div
+      style={{
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        gap: "12px",
+        marginTop: "10px",
+      }}
+    >
+      <WebsiteShareControl
+        roomID={roomID}
+        userID={userID}
+        isTeacher={role === "teacher"}
+      />
+    </div>
+    */}
           </div>
         </div>
       )}
