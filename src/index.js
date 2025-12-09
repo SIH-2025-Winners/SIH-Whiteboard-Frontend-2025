@@ -7,6 +7,7 @@ import reportWebVitals from "./reportWebVitals";
 import { store } from "./store/store";
 import WhiteboardPage from "./Whiteboard/WhiteboardPage";
 import WhiteboardPlayer from "./Whiteboard/WhiteboardReplay";
+import WhiteboardReplayPage from "./Whiteboard/whiteboardReplayPage";
 
 const container = document.getElementById("root");
 const root = createRoot(container);
@@ -17,7 +18,7 @@ root.render(
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/whiteboard" element={<WhiteboardPage />}></Route>
-        <Route path="/whiteboard-replay" element={<WhiteboardPlayer />}></Route>
+        <Route path="/whiteboard-replay" element={<WhiteboardReplayPage />}></Route>
 
 
       </Routes>

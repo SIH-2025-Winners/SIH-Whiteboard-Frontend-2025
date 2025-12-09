@@ -14,6 +14,7 @@ import {
 } from "./whiteboardSlice";
 
 const AUDIO_SERVER_URL = "https://sih-audio-2025-backend.onrender.com";
+// https://sih-audio-2025-backend.onrender.com
 
 // If your chunk-upload backend runs on a different origin, change this.
 const UPLOAD_SERVER_URL = "https://sih-audio-2025-backend.onrender.com";
