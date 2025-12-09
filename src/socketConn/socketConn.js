@@ -21,6 +21,7 @@ import {
   setPayloadSize,
   setPollData,
   setQuizAnswer,
+  setSentiment,
   setUsers,
   setWhiteboardState,
   switchSlide,
@@ -562,6 +563,10 @@ export const connectWithSocketServer = (roomID, userID) => {
     console.log(`Website sharing closed by user: ${userID} in room: ${roomID}`);
     store.dispatch(resetSharingState());
   });
+
+  socket.on("sentiment-result", ({label}) => {
+    store.dispatch(setSentiment(label));
+  })
 
   socket.on("elements-updated", ({ compressed, slideId }) => {
     const decompressed = decompress(compressed);

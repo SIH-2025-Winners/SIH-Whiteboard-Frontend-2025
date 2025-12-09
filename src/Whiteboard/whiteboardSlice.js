@@ -16,6 +16,7 @@ const initialState = {
   isDarkTheme: false,
   startRecording: false, // 🔥 yahi tumhara global flag
   recordingStartTime: Date.now(), // 🔥 timestamps ke liye zaroori
+  sentiment: ""
 };
 
 const whiteboardSlice = createSlice({
@@ -56,6 +57,10 @@ const whiteboardSlice = createSlice({
 
     switchSlide: (state, action) => {
       state.currentSlide = action.payload;
+    },
+
+    setSentiment: (state, action) => {
+      state.sentiment = action.payload;
     },
 
     createSlide: (state, action) => {
@@ -222,6 +227,7 @@ export const {
   startRecording,
 
   setPayloadSize,
+  setSentiment,
 
   addDoubt,
   upvoteDoubt,

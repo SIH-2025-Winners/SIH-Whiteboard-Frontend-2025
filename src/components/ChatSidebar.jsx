@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { theme } from '../styles/theme';
+import { useSelector } from 'react-redux';
 
 const ChatSidebar = ({ 
   isOpen, 
@@ -15,6 +16,7 @@ const ChatSidebar = ({
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const sentiment = useSelector((state) => state.whiteboard.sentiment);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -175,8 +177,9 @@ const ChatSidebar = ({
                 gap: theme.spacing.sm,
               }}
             >
-              💬 Room Chat
+              💬 Room Chat --- {sentiment}
             </h3>
+
             <p
               style={{
                 margin: 0,
