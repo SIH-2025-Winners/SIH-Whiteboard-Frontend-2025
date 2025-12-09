@@ -278,7 +278,9 @@ const Whiteboard = ({ role, userID, roomID }) => {
       // Blackboard mode - dark background
       ctx.fillStyle = "#1f2937"; // Dark gray background
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      console.log(`\n\ncanvas width and height: ${canvas.width} , ${canvas.height}`);
+      console.log(
+        `\n\ncanvas width and height: ${canvas.width} , ${canvas.height}`
+      );
     } else {
       // Whiteboard mode - light background
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -520,7 +522,7 @@ const Whiteboard = ({ role, userID, roomID }) => {
     setHistory(newHistory);
   }, [elements, history, currentHistoryIndex]);
 
-  const handleTouchMove = () => {};
+  // const handleTouchMove = () => {};
   const undo = useCallback(() => {
     if (currentHistoryIndex > 0) {
       const newIndex = currentHistoryIndex - 1;
@@ -1081,28 +1083,33 @@ const Whiteboard = ({ role, userID, roomID }) => {
   // Touch event handlers for mobile devices
   const handleTouchStart = (event) => {
     event.preventDefault(); // Prevent scrolling/zooming
-    if (event.touches.length !== 1) return; // Only handle single touch
 
-    // Set timestamp to prevent mouse event conflicts
+    if (event.touches.length !== 1) return;
+
+    // Mark last touch time to block mouse events
     setLastTouchTime(Date.now());
 
     const touch = event.touches[0];
-    const mouseEvent = {
-      clientX: touch.clientX,
-      clientY: touch.clientY,
-    };
-
-    // Call the original mouse handler logic directly (bypassing timestamp check)
-    const { clientX, clientY } = mouseEvent;
+    const clientX = touch.clientX;
+    const clientY = touch.clientY;
     const adjustedY = clientY;
+
+    // time calculation
+    const now = Date.now();
+    const t = now - recordingStartTime;
 
     if (selectedElement && action === actions.WRITING) {
       return;
     }
 
+    const slideId = currentSlideId;
+
     console.log(`${fillStylee}`);
 
     switch (toolType) {
+      // ===========================
+      // SHAPES / PENCIL
+      // ===========================
       case toolTypes.RECTANGLE:
       case toolTypes.LINE:
       case toolTypes.PENCIL:
@@ -1120,20 +1127,35 @@ const Whiteboard = ({ role, userID, roomID }) => {
           y1: adjustedY,
           x2: clientX,
           y2: adjustedY,
+
           toolType,
           id: uuid(),
           color: selectedColor,
           fill: fillShape,
           fillColorStyle: fillStylee,
           strokeW: toolType === toolTypes.PENCIL ? pencilSize : 2,
+
+          currentSlideId,
+          currentSlide,
+          startTime: t,
         });
 
         setAction(actions.DRAWING);
         setSelectedElement(element);
-        dispatch(updateElementInStore(element));
+
+        dispatch(
+          updateElementInStore({
+            elementData: element,
+            slideId,
+          })
+        );
+
         break;
       }
 
+      // ===========================
+      // TEXT TOOL
+      // ===========================
       case toolTypes.TEXT: {
         const element = createElement({
           x1: clientX,
@@ -1143,26 +1165,43 @@ const Whiteboard = ({ role, userID, roomID }) => {
           toolType,
           id: uuid(),
           color: selectedColor,
+          currentSlideId,
+          currentSlide,
+          startTime: t,
         });
 
         setAction(actions.WRITING);
         setSelectedElement(element);
-        dispatch(updateElementInStore(element));
+
+        dispatch(
+          updateElementInStore({
+            elementData: element,
+            slideId,
+          })
+        );
         break;
       }
 
+      // ===========================
+      // IMAGE TOOL
+      // ===========================
       case toolTypes.IMAGE: {
         setOpenImageModel(true);
         setMousePosition({ x: clientX, y: clientY });
         break;
       }
 
+      // ===========================
+      // ERASER
+      // ===========================
       case toolTypes.ERASER: {
-        // Start erasing (drawing with background color)
         startErasing(clientX, adjustedY);
         break;
       }
 
+      // ===========================
+      // SELECTION TOOL
+      // ===========================
       case toolTypes.SELECTION: {
         const element = getElementAtPosition(clientX, clientY, elements);
 
@@ -1182,7 +1221,6 @@ const Whiteboard = ({ role, userID, roomID }) => {
             element.type === toolTypes.HEART ||
             element.type === toolTypes.CLOUD)
         ) {
-          // Determine if we're resizing or moving based on cursor position
           setAction(
             element.position === cursorPositions.INSIDE
               ? actions.MOVING
@@ -1192,14 +1230,27 @@ const Whiteboard = ({ role, userID, roomID }) => {
           const offsetX = clientX - element.x1;
           const offsetY = clientY - element.y1;
 
-          setSelectedElement({ ...element, offsetX, offsetY });
+          setSelectedElement({
+            ...element,
+            offsetX,
+            offsetY,
+            fillColorStyle:
+              element.fillColorStyle ||
+              element.roughElement?.options?.fill ||
+              false,
+            fill:
+              element.fill !== undefined
+                ? element.fill
+                : element.roughElement?.options?.fill || false,
+          });
         }
 
+        // Pencil selection
         if (element && element.type === toolTypes.PENCIL) {
           setAction(actions.MOVING);
 
-          const xOffsets = element.points.map((point) => clientX - point.x);
-          const yOffsets = element.points.map((point) => clientY - point.y);
+          const xOffsets = element.points.map((p) => clientX - p.x);
+          const yOffsets = element.points.map((p) => clientY - p.y);
 
           setSelectedElement({ ...element, xOffsets, yOffsets });
         }
@@ -1211,199 +1262,268 @@ const Whiteboard = ({ role, userID, roomID }) => {
     }
   };
 
-  // const handleTouchMove = (event) => {
-  //   event.preventDefault(); // Prevent scrolling/zooming
-  //   if (event.touches.length !== 1) return; // Only handle single touch
-
-  //   // Update touch timestamp
-  //   setLastTouchTime(Date.now());
-
-  //   const touch = event.touches[0];
-  //   const { clientX, clientY } = touch;
-
-  //   // Handle touch move logic directly (bypassing timestamp check)
-  //   lastCursorPosition = {
-  //     cursorData: { x: clientX, y: clientY },
-  //     roomID: roomID,
-  //   };
-
-  //   if (emitCursor) {
-  //     emitCursorPosition({
-  //       cursorData: { x: clientX, y: clientY },
-  //       roomID: roomID,
-  //     });
-
-  //     setTimeout(() => {
-  //       emitCursor = true;
-  //       emitCursorPosition(lastCursorPosition);
-  //     }, [80]);
-  //   }
-
-  //   // Handle eraser drawing (like pencil but with background color)
-  //   if (
-  //     toolType === toolTypes.ERASER &&
-  //     action === actions.DRAWING &&
-  //     selectedElement
-  //   ) {
-  //     // Update eraser stroke just like pencil
-  //     const newPoints = [...selectedElement.points, { x: clientX, y: clientY }];
-  //     const elementsCopy = [...elements];
-  //     const index = elementsCopy.findIndex(
-  //       (el) => el.id === selectedElement.id
-  //     );
-
-  //     if (index !== -1) {
-  //       elementsCopy[index] = {
-  //         ...selectedElement,
-  //         points: newPoints,
-  //       };
-  //       dispatch(setElements(elementsCopy));
-  //       setSelectedElement({ ...selectedElement, points: newPoints });
-  //     }
-  //   }
-
-  //   // Handle drawing new elements
-  //   if (action === actions.DRAWING && selectedElement) {
-  //     const index = elements.findIndex((el) => el.id === selectedElement.id);
-
-  //     if (index !== -1) {
-  //       const elementColor =
-  //         elements[index].color ||
-  //         selectedElement.color ||
-  //         store.getState().whiteboard.selectedColor ||
-  //         "#000000";
-
-  //       updateElement(
-  //         {
-  //           index,
-  //           id: elements[index].id,
-  //           x1: elements[index].x1,
-  //           y1: elements[index].y1,
-  //           x2: clientX,
-  //           y2: clientY,
-  //           type: elements[index].type,
-  //           color: elementColor,
-  //           fill: fillShape,
-  //           fillStyle: fillStylee,
-  //         },
-  //         elements,
-  //         roomID
-  //       );
-  //     }
-  //   }
-
-  //   // Handle selection tool cursor changes
-  //   if (toolType === toolTypes.SELECTION) {
-  //     // Note: Can't set cursor style on touch devices, so skipping element position check
-  //   }
-
-  //   // Handle moving elements
-  //   if (
-  //     toolType === toolTypes.SELECTION &&
-  //     action === actions.MOVING &&
-  //     selectedElement
-  //   ) {
-  //     // Handle pencil movement
-  //     if (selectedElement.type === toolTypes.PENCIL) {
-  //       const newPoints = selectedElement.points.map((_, index) => ({
-  //         x: clientX - selectedElement.xOffsets[index],
-  //         y: clientY - selectedElement.yOffsets[index],
-  //       }));
-
-  //       const index = elements.findIndex((el) => el.id === selectedElement.id);
-  //       if (index !== -1) {
-  //         updatePencilElementWhenMoving(
-  //           {
-  //             index,
-  //             newPoints,
-  //             color: selectedElement.color,
-  //           },
-  //           elements,
-  //           roomID
-  //         );
-  //       }
-  //       return;
-  //     }
-
-  //     // Handle other element types movement
-  //     const { id, x1, x2, y1, y2, src, type, offsetX, offsetY, text, color } =
-  //       selectedElement;
-
-  //     const width = x2 - x1;
-  //     const height = y2 - y1;
-
-  //     const newX1 = clientX - offsetX;
-  //     const newY1 = clientY - offsetY;
-
-  //     const index = elements.findIndex((el) => el.id === selectedElement.id);
-
-  //     if (index !== -1) {
-  //       updateElement(
-  //         {
-  //           id,
-  //           x1: newX1,
-  //           y1: newY1,
-  //           x2: newX1 + width,
-  //           y2: newY1 + height,
-  //           type,
-  //           index,
-  //           src: src,
-  //           text,
-  //           color,
-  //         },
-  //         elements,
-  //         roomID
-  //       );
-  //     }
-  //   }
-
-  //   // Handle resizing elements
-  //   if (
-  //     toolType === toolTypes.SELECTION &&
-  //     action === actions.RESIZING &&
-  //     selectedElement
-  //   ) {
-  //     const { id, type, position, src, color, ...coordinates } =
-  //       selectedElement;
-
-  //     const { x1, y1, x2, y2 } = getResizedCoordinates(
-  //       clientX,
-  //       clientY,
-  //       position,
-  //       coordinates
-  //     );
-
-  //     const selectedElementIndex = elements.findIndex(
-  //       (el) => el.id === selectedElement.id
-  //     );
-
-  //     if (selectedElementIndex !== -1) {
-  //       updateElement(
-  //         {
-  //           x1,
-  //           x2,
-  //           y1,
-  //           y2,
-  //           src,
-  //           type: selectedElement.type,
-  //           id: selectedElement.id,
-  //           index: selectedElementIndex,
-  //           color: selectedElement.color,
-  //         },
-  //         elements,
-  //         roomID
-  //       );
-  //     }
-  //   }
-  // };
-
-  const handleTouchEnd = (event) => {
+  const handleTouchMove = (event) => {
     event.preventDefault(); // Prevent scrolling/zooming
+    if (event.touches.length !== 1) return;
 
     // Update touch timestamp
     setLastTouchTime(Date.now());
 
-    // Handle touch end logic directly (bypassing timestamp check)
+    const touch = event.touches[0];
+    const { clientX, clientY } = touch;
+
+    lastCursorPosition = {
+      cursorData: { x: clientX, y: clientY, userId: userID },
+      roomID: roomID,
+    };
+
+    if (emitCursor) {
+      emitCursorPosition({
+        cursorData: { x: clientX, y: clientY, userId: userID },
+        roomID,
+      });
+
+      setTimeout(() => {
+        emitCursor = true;
+        emitCursorPosition(lastCursorPosition);
+      }, 10);
+    }
+
+    // ================================
+    // 🚨 ERASER (same as mouse)
+    // ================================
+    if (
+      toolType === toolTypes.ERASER &&
+      action === actions.DRAWING &&
+      selectedElement
+    ) {
+      const now = Date.now();
+      const t = now - recordingStartTime;
+
+      const newPoints = [
+        ...selectedElement.points,
+        { x: clientX, y: clientY, t },
+      ];
+
+      const elementsCopy = [...elements];
+      const index = elementsCopy.findIndex(
+        (el) => el.id === selectedElement.id
+      );
+
+      if (index !== -1) {
+        elementsCopy[index] = {
+          ...selectedElement,
+          points: newPoints,
+          currentSlideId,
+          currentSlide,
+        };
+
+        dispatch(
+          updateElementInStore({
+            elementData: elementsCopy[index],
+            slideId: currentSlideId,
+          })
+        );
+
+        setSelectedElement({ ...selectedElement, points: newPoints });
+      }
+    }
+
+    // ================================
+    // 🚨 DRAWING LOGIC
+    // ================================
+    if (action === actions.DRAWING && selectedElement) {
+      const index = elements.findIndex((el) => el.id === selectedElement.id);
+      const now = Date.now();
+      const t = now - recordingStartTime;
+
+      if (index !== -1) {
+        const elementColor =
+          elements[index].color ||
+          selectedElement.color ||
+          store.getState().whiteboard.selectedColor ||
+          "#000000";
+
+        updateElement(
+          {
+            index,
+            id: elements[index].id,
+            x1: elements[index].x1,
+            y1: elements[index].y1,
+            x2: clientX,
+            y2: clientY,
+            t,
+            type: elements[index].type,
+            color: elementColor,
+            fill: fillShape,
+            fillStyle: fillStylee,
+          },
+          elements,
+          roomID,
+          currentSlideId,
+          currentSlide
+        );
+      }
+    }
+
+    // ================================
+    // 🚨 CURSOR FEEDBACK ON TOUCH (skip style because touch has no cursor)
+    // ================================
+    if (toolType === toolTypes.SELECTION) {
+      // Cannot set cursor on touch devices — ignored
+    }
+
+    // ================================
+    // 🚨 MOVING ELEMENTS
+    // ================================
+    if (
+      toolType === toolTypes.SELECTION &&
+      action === actions.MOVING &&
+      selectedElement
+    ) {
+      // ----- Pencil movement -----
+      if (selectedElement.type === toolTypes.PENCIL) {
+        const newPoints = selectedElement.points.map((p, index) => ({
+          x: clientX - selectedElement.xOffsets[index],
+          y: clientY - selectedElement.yOffsets[index],
+          t: p.t,
+        }));
+
+        const now = Date.now();
+        const t = now - recordingStartTime;
+
+        const index = elements.findIndex((el) => el.id === selectedElement.id);
+
+        if (index !== -1) {
+          updatePencilElementWhenMoving(
+            {
+              index,
+              newPoints,
+              color: selectedElement.color,
+              t,
+            },
+            elements,
+            roomID,
+            currentSlideId,
+            currentSlide
+          );
+        }
+        return;
+      }
+
+      // ----- Other shapes movement -----
+      const {
+        id,
+        x1,
+        x2,
+        y1,
+        y2,
+        src,
+        type,
+        offsetX,
+        offsetY,
+        text,
+        color,
+        fill,
+        fillColorStyle,
+      } = selectedElement;
+
+      const width = x2 - x1;
+      const height = y2 - y1;
+
+      const newX1 = clientX - offsetX;
+      const newY1 = clientY - offsetY;
+
+      const index = elements.findIndex((el) => el.id === selectedElement.id);
+
+      if (index !== -1) {
+        updateElement(
+          {
+            id,
+            x1: newX1,
+            y1: newY1,
+            x2: newX1 + width,
+            y2: newY1 + height,
+            type,
+            index,
+            src,
+            text,
+            color,
+            fill,
+            fillStyle: fillColorStyle,
+          },
+          elements,
+          roomID,
+          currentSlideId,
+          currentSlide
+        );
+      }
+    }
+
+    // ================================
+    // 🚨 RESIZING ELEMENTS
+    // ================================
+    if (
+      toolType === toolTypes.SELECTION &&
+      action === actions.RESIZING &&
+      selectedElement
+    ) {
+      const now = Date.now();
+      const t = now - recordingStartTime;
+
+      const {
+        id,
+        type,
+        position,
+        fill,
+        fillColorStyle,
+        src,
+        color,
+        ...coordinates
+      } = selectedElement;
+
+      const { x1, y1, x2, y2 } = getResizedCoordinates(
+        clientX,
+        clientY,
+        position,
+        coordinates
+      );
+
+      const selectedElementIndex = elements.findIndex(
+        (el) => el.id === selectedElement.id
+      );
+
+      if (selectedElementIndex !== -1) {
+        updateElement(
+          {
+            x1,
+            x2,
+            y1,
+            y2,
+            src,
+            type,
+            id,
+            index: selectedElementIndex,
+            color,
+            fill,
+            fillStyle: fillColorStyle,
+            t,
+          },
+          elements,
+          roomID,
+          currentSlideId,
+          currentSlide
+        );
+      }
+    }
+  };
+
+  const handleTouchEnd = (event) => {
+    event.preventDefault(); // Prevent scrolling/zooming
+
+    // Prevent mouse events firing after touch (same as mouseUp check)
+    setLastTouchTime(Date.now());
+
     console.log(
       "Touch end called, action:",
       action,
@@ -1450,21 +1570,23 @@ const Whiteboard = ({ role, userID, roomID }) => {
               type: elements[selectedElementIndex].type,
               color: currentColor,
               fill: fillShape,
-              fillStyle: fillStylee,
+              fillStyle: selectedElement.fillColorStyle, // SAME AS MOUSEUP
             },
             elements,
-            roomID
+            roomID,
+            currentSlideId, // SAME AS MOUSEUP
+            currentSlide // SAME AS MOUSEUP
           );
         }
       }
     }
 
-    // Save state for undo/redo after completing touch drawing operation
+    // Save state for undo/redo after completing drawing operation
     if (selectedElement) {
-      setTimeout(() => saveState(), 100); // Small delay to ensure state is updated
+      setTimeout(() => saveState(), 100);
     }
 
-    // CRITICAL: Always reset these states to prevent sticky behavior
+    // CRITICAL: reset states
     setAction(null);
     setSelectedElement(null);
   };
@@ -1619,7 +1741,7 @@ const Whiteboard = ({ role, userID, roomID }) => {
       />
 
       {/* Undo/Redo Controls - Upper Right */}
-      {role === "teacher" && (
+      {/* {role === "teacher" && (
         <div
           style={{
             position: "fixed",
@@ -1723,7 +1845,7 @@ const Whiteboard = ({ role, userID, roomID }) => {
             ↷
           </button>
         </div>
-      )}
+      )} */}
 
       {role === "teacher" && (
         <>
@@ -2053,7 +2175,7 @@ const Whiteboard = ({ role, userID, roomID }) => {
             borderRadius: "8px",
             boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
             border: "1px solid #e5e7eb",
-             // HIDDEN - PDF functionality preserved for later use
+            // HIDDEN - PDF functionality preserved for later use
             alignItems: "center",
             display: "flex",
             gap: "12px",
